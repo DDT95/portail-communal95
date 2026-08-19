@@ -3,30 +3,104 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Portail communal · DDT 95</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Fiche territoriale communale du Val-d’Oise — cadastre, bâti, QPV, écoles, élus et risques. DDT 95.">
+  <meta name="theme-color" content="#000091">
+  <title>Portail communal · Val-d’Oise</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="style.css?v=1">
 </head>
 <body>
-  <header>
-    <img src="https://ddt95.github.io/atlas-territorial-95/prefet-val-doise-logo.png" alt="Préfet du Val-d’Oise">
-    <div><small>DDT DU VAL-D’OISE</small><strong>Portail communal</strong></div>
-    <a href="https://ddt95.github.io/atlas-territorial-95/">← Atlas</a>
+<a class="skip-link" href="#map">Aller à la carte</a>
+<div class="app">
+  <header class="institutional">
+    <a class="brand" href="https://ddt95.github.io/atlas-territorial-95/" aria-label="Retour à l’Atlas territorial">
+      <img src="prefet-val-doise.svg" alt="Préfet du Val-d’Oise — Liberté Égalité Fraternité">
+      <div>
+        <span>PORTAIL COMMUNAL · VAL-D’OISE</span>
+        <strong id="communeTitle">Portail communal</strong>
+        <small id="communeSub">Choisissez une commune pour ouvrir sa fiche territoriale</small>
+      </div>
+    </a>
+    <div class="header-actions">
+      <button id="openExport" class="atlas-return" type="button">Imprimer / Exporter</button>
+      <a class="atlas-return" href="https://ddt95.github.io/atlas-territorial-95/">← Atlas</a>
+    </div>
   </header>
-  <main>
-    <p class="eyebrow">LECTURE 01 · EN CONSTRUCTION</p>
-    <h1 id="pageTitle">Une commune.<br><span>Toutes les lectures.</span></h1>
-    <p class="lead" id="pageLead">Ouvrez une fiche communale, comparez plusieurs territoires et retrouvez les fiches actions utiles.</p>
-    <form id="communeForm">
-      <label for="communeSelect">Choisir une commune</label>
-      <div><select id="communeSelect"><option value="">Chargement des 183 communes…</option></select><button>Ouvrir la fiche</button></div>
-    </form>
-    <section class="grid">
-      <article class="primary"><b>01</b><h2>Fiche communale</h2><p>Chiffres clés, cartes, enjeux et liens vers les neuf lectures thématiques.</p><span id="selectedCommune">Choisir une commune</span></article>
-      <article><b>02</b><h2>Comparer</h2><p>Comparer plusieurs communes avec les mêmes définitions, millésimes et indicateurs.</p><span>Module à venir</span></article>
-      <article><b>03</b><h2>Fiches actions</h2><p>Passer du constat aux ressources, dispositifs et contacts mobilisables sur le territoire.</p><span>Bibliothèque à venir</span></article>
+
+  <main class="workspace">
+    <aside class="left-panel" id="panel" aria-label="Fiche et commandes de la carte">
+      <div class="panel-scroll">
+        <h1 id="pageTitle">Une commune.<br><span>Toutes les lectures.</span></h1>
+
+        <form id="communeForm" class="search">
+          <label class="sr-only" for="communeSelect">Choisir une commune</label>
+          <div><input id="communeSelect" list="communes-list" type="search" placeholder="Rechercher une commune…" autocomplete="off"><button type="submit">Ouvrir</button></div>
+          <datalist id="communes-list"></datalist>
+        </form>
+
+        <div class="main-actions"><button id="pdfLink" type="button" hidden>Fiche officielle PDF (OCTE)</button><button id="mobile-panel" type="button" aria-expanded="false">Afficher les couches</button></div>
+
+        <div class="territory" id="kpiStrip" hidden>
+          <span><strong id="kpiPopulation">—</strong><br>habitants</span>
+          <span><strong id="kpiSurface">—</strong><br>superficie</span>
+          <span><strong id="kpiEpci">—</strong><br>intercommunalité</span>
+          <span><strong id="kpiCode">—</strong><br>code INSEE</span>
+        </div>
+
+        <section class="reading elus-block" id="elusBlock" hidden>
+          <b>Élus et gouvernance</b>
+          <div id="elusRows" class="data-grid"></div>
+        </section>
+
+        <section class="reading risques-block" id="risquesBlock" hidden>
+          <b>Risques majeurs recensés</b>
+          <div id="risquesRows"></div>
+          <p class="source-note">Géorisques · GASPAR — consulter <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noreferrer">georisques.gouv.fr</a> pour le détail réglementaire.</p>
+        </section>
+
+        <section class="layers" aria-labelledby="layers-title">
+          <div class="section-title"><h2 id="layers-title">Couches de la carte</h2><button id="hide-all" type="button">Tout masquer</button></div>
+          <div id="layer-list"></div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="map-zone" aria-label="Carte interactive de la commune">
+      <div id="map" tabindex="0" aria-label="Carte interactive de la commune sélectionnée."></div>
+      <div class="map-loader" id="map-loader" role="status" aria-live="polite"><i aria-hidden="true"></i><strong>Préparation de la fiche…</strong><span id="loader-detail">Chargement du territoire</span></div>
+      <div class="map-intro" id="map-intro" hidden><strong>Information</strong><span></span></div>
+      <div class="legend" id="legend" aria-label="Légende de la carte"><strong>Légende</strong><div id="legend-items"></div></div>
+      <div class="map-note">Emprise communale · fond OpenStreetMap</div>
     </section>
   </main>
-  <footer>DDT du Val-d’Oise – Pôle géomatique</footer>
-  <script src="app.js"></script>
+
+  <footer><span><b>PORTAIL COMMUNAL · DDT 95</b> · synthèse territoriale par commune</span><span>DDT Val-d’Oise · Pôle géomatique · Leaflet 1.9.4</span></footer>
+</div>
+
+<aside class="drawer" id="drawer" aria-labelledby="drawer-title" aria-hidden="true">
+  <button class="drawer-close" id="drawer-close" type="button" aria-label="Fermer la fiche">×</button>
+  <div class="drawer-head"><p>FICHE BÂTIMENT</p><h2 id="drawer-title">Aucune sélection</h2><span id="drawer-sub">Cliquez sur un bâtiment</span></div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-actions"><a id="drawer-source" href="https://rnb.beta.gouv.fr/" target="_blank" rel="noopener">Référentiel National des Bâtiments ↗</a></div>
+</aside>
+
+<dialog id="exportDialog" class="export-dialog">
+  <button class="dialog-x" id="closeExport" type="button" aria-label="Fermer">×</button>
+  <small>EXPORT À LA DEMANDE</small>
+  <h2>Que souhaitez-vous faire ?</h2>
+  <p>Aucune action n’est lancée automatiquement. Choisissez le format qui vous convient.</p>
+  <div class="export-choices">
+    <button id="makePdf" type="button"><b>PDF mis en page</b><span>Créer un document A4 avec la fiche et ses données.</span></button>
+    <button id="printProfile" type="button"><b>Imprimer / enregistrer</b><span>Ouvrir les options du navigateur pour choisir une imprimante ou enregistrer en PDF.</span></button>
+  </div>
+</dialog>
+
+<div class="sr-only" id="text-alternative" aria-live="polite">Aucune commune sélectionnée.</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
