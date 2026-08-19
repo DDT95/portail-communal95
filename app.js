@@ -27,8 +27,12 @@ const CFG = {
   ceremaApi: 'https://apidf-preprod.cerema.fr/indicateurs/conso_espace/communes',
   hubeauApi: 'https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/communes_udi',
   odreApi: 'https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/consommation-annuelle-d-electricite-et-gaz-par-commune/records',
+  bdnbApi: 'https://api.bdnb.io/v1/bdnb',
+  eauCoursEau: 'https://ddt95.github.io/eau95/data/processed/cours_eau.geojson',
+  eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
   qpvFile: 'data/qpv_95.geojson',
   elusFile: 'data/elus_95.json',
+  finessFile: 'data/finess_95.json',
   pdfBase: 'https://piece-jointe-carto.developpement-durable.gouv.fr/DEPT095A/DONNEE_GENERIQUE/N_BASE_COMMUNALE/OCTE/Fiches',
   zoomGated: 13
 };
@@ -36,15 +40,22 @@ const CFG = {
 const SERVICE_CATS = {
   france_services: { label: 'Maisons France Services', color: '#000091' },
   administration: { label: 'Mairie, CCAS & administration', color: '#3153a4' },
-  sante: { label: 'Santé & solidarité', color: '#d33b63' },
   securite: { label: 'Sécurité & secours', color: '#d65b2b' },
   quotidien: { label: 'Services du quotidien', color: '#b07800' },
   culture: { label: 'Culture & sport', color: '#33845b' }
 };
 
+const FINESS_CATS = {
+  hopitaux: { label: 'Hôpitaux & cliniques', color: '#c1443c' },
+  medecins: { label: 'Médecins & laboratoires', color: '#d33b63' },
+  pharmacies: { label: 'Pharmacies', color: '#18753c' },
+  ehpad: { label: 'EHPAD & personnes âgées', color: '#8146a1' },
+  handicap: { label: 'Accueil handicap & enfance', color: '#0078f3' }
+};
+
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
-  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [],
+  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [],
   layers: {}, layerDefs: [],
   drawerMode: 'commune'
 };
@@ -93,6 +104,25 @@ if (initialCode) {
 } else {
   setLoading(false);
   $('communeSub').textContent = 'Choisissez une commune pour ouvrir sa fiche territoriale';
+  buildLandingMap();
+}
+
+function buildLandingMap() {
+  map.dragging.disable(); map.scrollWheelZoom.disable(); map.doubleClickZoom.disable();
+  fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
+    const layer = L.geoJSON(fc, {
+      style: { color: '#71839d', weight: 0.8, opacity: 0.75, fillColor: '#f4f7fb', fillOpacity: 0.5 },
+      onEachFeature: (f, l) => {
+        l.bindTooltip(f.properties.nom, { sticky: true, direction: 'top' });
+        l.on({
+          mouseover: () => l.setStyle({ color: '#000091', weight: 1.4, fillColor: '#e6e6fb', fillOpacity: 0.7 }),
+          mouseout: () => layer.resetStyle(l),
+          click: () => { location.href = `?${new URLSearchParams({ code: f.properties.code, nom: f.properties.nom })}`; }
+        });
+      }
+    }).addTo(map);
+    requestAnimationFrame(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [24, 24], animate: false }); });
+  });
 }
 
 async function loadCommune(code, nomHint) {
@@ -106,7 +136,7 @@ async function loadCommune(code, nomHint) {
     document.title = `${state.nom} · Portail communal · DDT 95`;
     $('communeTitle').textContent = state.nom;
     $('communeSub').textContent = `Fiche territoriale · code INSEE ${code}`;
-    $('pageTitle').innerHTML = `${escapeHtml(state.nom)}.<br><span>Sa fiche territoriale.</span>`;
+    $('pageTitle').innerHTML = `${escapeHtml(state.nom)}<br><span>Fiche territoriale</span>`;
     $('communeSelect').value = state.nom;
 
     state.kpi = { population: commune.population || null, surface: commune.surface || null, epci: '…', code };
@@ -125,7 +155,7 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom), renderQpv(commune.contour)]);
+    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom), loadFiness(commune.contour), renderQpv(commune.contour)]);
     setupDynamicLayers();
     renderControls();
     renderFicheDrawer(true);
@@ -178,6 +208,11 @@ function loadServices(nom) {
   return fetch(CFG.servicesApi).then(r => r.json()).then(d => {
     state.services = (d.records || []).filter(r => r.city === nom && r.category !== 'education' && r.category !== 'mobilite' && r.lat && r.lon);
   }).catch(() => { state.services = []; });
+}
+function loadFiness(contour) {
+  return fetch(CFG.finessFile).then(r => r.json()).then(all => {
+    state.finess = all.filter(r => { try { return turf.booleanPointInPolygon(turf.point([r.lon, r.lat]), contour); } catch { return false; } });
+  }).catch(() => { state.finess = []; });
 }
 
 // ---------- Volet droit : fiche commune / fiche bâtiment ----------
@@ -243,6 +278,9 @@ function setupDynamicLayers() {
     { id: 'qpv', group: 'Politique de la ville', label: 'Quartiers prioritaires (QPV)', description: `${state.qpv.length ? state.qpv.length + ' quartier(s) recensé(s)' : 'Aucun QPV recensé dans cette commune'} · ANCT`, color: '#c1443c', active: state.qpv.length > 0, disabled: state.qpv.length === 0, kind: 'static' },
     { id: 'ecoles', group: 'Services publics', label: 'Établissements scolaires', description: 'Écoles, collèges, lycées publics et privés sous contrat · data.education.gouv.fr', color: '#c76524', active: true, kind: 'commune' },
     ...Object.entries(SERVICE_CATS).map(([cat, meta]) => ({ id: 'svc_' + cat, group: 'Services publics', label: meta.label, description: 'Service-Public.gouv.fr / OpenStreetMap · acces-services95', color: meta.color, active: cat === 'france_services' || cat === 'administration', kind: 'commune' })),
+    ...Object.entries(FINESS_CATS).map(([cat, meta]) => ({ id: 'san_' + cat, group: 'Santé & solidarité', label: meta.label, description: 'Répertoire FINESS · ministère de la Santé', color: meta.color, active: cat === 'hopitaux' || cat === 'medecins', kind: 'commune' })),
+    { id: 'coursEau', group: 'Eau', label: 'Cours d’eau', description: 'DDT 95 · arrêté préfectoral 2017-13817', color: '#0063cb', active: true, kind: 'commune' },
+    { id: 'stationsEau', group: 'Eau', label: 'Stations de mesure', description: 'DDT 95 · qualité de l’eau', color: '#e4794a', active: false, kind: 'commune' },
     { id: 'batiments', group: 'Urbanisme et bâti', label: 'Bâtiments', description: 'Référentiel National des Bâtiments — tous bâtiments recensés', color: '#18753c', active: false, kind: 'zoom' },
     { id: 'cadastre', group: 'Urbanisme et bâti', label: 'Parcelles cadastrales', description: 'APICarto IGN — cadastre', color: '#6a4c93', active: false, kind: 'zoom' },
     { id: 'gpu', group: 'Urbanisme et bâti', label: 'Zonage PLU', description: 'Géoportail de l’urbanisme — zones du document d’urbanisme', color: '#0d5c63', active: false, kind: 'zoom' },
@@ -263,6 +301,9 @@ function setupDynamicLayers() {
   buildQpvLayer();
   buildCommuneLayer('ecoles', buildEcoles);
   Object.keys(SERVICE_CATS).forEach(cat => buildCommuneLayer('svc_' + cat, () => buildServiceLayer(cat)));
+  Object.keys(FINESS_CATS).forEach(cat => buildCommuneLayer('san_' + cat, () => buildFinessLayer(cat)));
+  buildCommuneLayer('coursEau', buildCoursEau);
+  buildCommuneLayer('stationsEau', buildStationsEau);
   buildCommuneLayer('znieff1', () => buildNature('znieff1', 'znieff1'));
   buildCommuneLayer('znieff2', () => buildNature('znieff2', 'znieff2'));
   buildCommuneLayer('pnr', () => buildNature('pnr', 'pnr'));
@@ -317,6 +358,41 @@ function buildServiceLayer(category) {
     const icon = L.divIcon({ className: '', html: `<div class="theme-marker svc" style="background:${meta.color}">${meta.label[0]}</div>`, iconSize: [22, 22] });
     return L.marker([r.lat, r.lon], { icon }).bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.typeLabel || meta.label)}<br>${escapeHtml(r.address || '')}`);
   })));
+}
+
+function buildFinessLayer(category) {
+  const records = state.finess.filter(r => r.cat === category);
+  if (!records.length) return Promise.resolve(null);
+  const meta = FINESS_CATS[category];
+  return Promise.resolve(L.layerGroup(records.map(r => {
+    const icon = L.divIcon({ className: '', html: `<div class="theme-marker svc" style="background:${meta.color}">${r.urgences ? '+' : meta.label[0]}</div>`, iconSize: [22, 22] });
+    return L.marker([r.lat, r.lon], { icon }).bindPopup(`<strong>${escapeHtml(r.nom)}</strong><br>${escapeHtml(meta.label)}${r.urgences ? ' · Urgences' : ''}<br>${escapeHtml(r.adresse)}${r.tel ? '<br>' + escapeHtml(r.tel) : ''}`);
+  })));
+}
+
+function buildCoursEau() {
+  if (!state.contour) return Promise.resolve(null);
+  return fetch(CFG.eauCoursEau).then(r => r.json()).then(d => {
+    const features = (d.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
+    if (!features.length) return null;
+    return L.geoJSON({ type: 'FeatureCollection', features }, {
+      style: { color: '#0063cb', weight: 2, opacity: 0.85 },
+      onEachFeature: (f, layer) => layer.bindTooltip(f.properties?.NOM || 'Cours d’eau', { sticky: true })
+    });
+  }).catch(() => null);
+}
+
+function buildStationsEau() {
+  if (!state.contour) return Promise.resolve(null);
+  return fetch(CFG.eauStations).then(r => r.json()).then(d => {
+    const features = (d.features || []).filter(f => { try { return turf.booleanPointInPolygon(f, state.contour); } catch { return false; } });
+    if (!features.length) return null;
+    return L.layerGroup(features.map(f => {
+      const [lon, lat] = f.geometry.coordinates;
+      const icon = L.divIcon({ className: '', html: '<div class="theme-marker" style="background:#e4794a">S</div>', iconSize: [22, 22] });
+      return L.marker([lat, lon], { icon }).bindPopup(`<strong>${escapeHtml(f.properties?.LbStationM || 'Station de mesure')}</strong><br>${escapeHtml(f.properties?.NomCoursdE || '')}`);
+    }));
+  }).catch(() => null);
 }
 
 function buildNature(id, endpoint) {
@@ -488,11 +564,38 @@ function openBuildingDrawer(feature) {
     ['Adresse', addr ? `${addr.street_number || ''} ${addr.street || ''}, ${addr.city_zipcode || ''} ${addr.city_name || ''}` : null],
     ['Identifiant RNB', feature.id]
   ].filter(([, v]) => v);
-  $('drawer-body').innerHTML = `<section class="result-section"><h3>Bâtiment</h3><dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Pour le DPE, le RPLS et le détail énergétique : ouvrez ce bâtiment dans la lecture <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a>.</p></section>`;
+  $('drawer-body').innerHTML = `<section class="result-section"><h3>Bâtiment</h3><dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section><section class="result-section" id="bdnbSection"><h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Recherche en cours…</p></section>`;
   $('drawer-actions').innerHTML = `<button id="drawer-back" type="button">← Retour à la fiche commune</button>`;
   $('drawer-back').onclick = () => renderFicheDrawer(true);
   $('drawer').classList.add('open');
   $('drawer').setAttribute('aria-hidden', 'false');
+  if (feature.id) loadBdnb(feature.id);
+}
+
+async function loadBdnb(rnbId) {
+  const section = $('bdnbSection');
+  try {
+    const rel = await fetch(`${CFG.bdnbApi}/donnees/batiment_construction?rnb_id=eq.${rnbId}&select=batiment_groupe_id&limit=1`).then(r => r.json());
+    const groupId = rel?.[0]?.batiment_groupe_id;
+    if (!groupId) { section.innerHTML = '<h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Aucune correspondance BDNB pour ce bâtiment.</p>'; return; }
+    const [dpe, rpls, risks] = await Promise.all([
+      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_dpe_representatif_logement?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null),
+      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_rpls?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null),
+      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_risques?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null)
+    ]);
+    const rows = [
+      dpe?.classe_bilan_dpe ? ['DPE — classe énergie', dpe.classe_bilan_dpe] : null,
+      dpe?.classe_emission_ges ? ['DPE — classe GES', dpe.classe_emission_ges] : null,
+      dpe?.annee_construction_dpe ? ['Année de construction', dpe.annee_construction_dpe] : null,
+      rpls?.nb_log ? ['Logements du parc social (RPLS)', formatNumber(rpls.nb_log)] : null,
+      risks?.alea_argile ? ['Aléa retrait-gonflement argiles', risks.alea_argile] : null,
+      risks?.alea_radon ? ['Aléa radon', risks.alea_radon] : null,
+      risks?.alea_sismique ? ['Aléa sismique', risks.alea_sismique] : null
+    ].filter(Boolean);
+    section.innerHTML = `<h3>DPE, logement social et risques (BDNB)</h3>${rows.length ? `<dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : '<p class="source-note">Aucune donnée BDNB publiée pour ce bâtiment.</p>'}<p class="source-note">Base de Données Nationale des Bâtiments — voir aussi <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a>.</p>`;
+  } catch (error) {
+    section.innerHTML = '<h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Interrogation BDNB indisponible pour le moment.</p>';
+  }
 }
 
 // ---------- Panneau de couches, regroupé par thème ----------
