@@ -1093,12 +1093,17 @@ $('openExport').addEventListener('click', () => exportDialog.showModal());
 $('closeExport').addEventListener('click', () => exportDialog.close());
 exportDialog.addEventListener('click', e => { if (e.target === exportDialog) exportDialog.close(); });
 
-function openPrintPage() {
+function openPrintPage(mode) {
   exportDialog.close();
   renderFicheDrawer(true);
-  window.open('print.html', '_blank');
+  window.open(`print.html?mode=${mode}`, '_blank');
 }
 
-$('makePdf').addEventListener('click', openPrintPage);
+$('exportMap').addEventListener('click', () => openPrintPage('carte'));
+$('exportFiche').addEventListener('click', () => openPrintPage('fiche'));
+$('exportOcte').addEventListener('click', () => {
+  exportDialog.close();
+  window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');
+});
 
 window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, escapeHtml, formatNumber, octeUrl: () => `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf` };
