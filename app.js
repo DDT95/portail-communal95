@@ -31,6 +31,11 @@ const CFG = {
   eauCoursEau: 'https://ddt95.github.io/eau95/data/processed/cours_eau.geojson',
   eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
   roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
+  cycleFile: 'https://ddt95.github.io/transport95/cycle95.js',
+  icpeApi: 'https://www.georisques.gouv.fr/api/v1/installations_classees',
+  sspApi: 'https://www.georisques.gouv.fr/api/v1/ssp',
+  gpuSupApi: 'https://apicarto.ign.fr/api/gpu/assiette-sup-s',
+  ocsgeWmts: 'https://data.geopf.fr/wmts',
   qpvFile: 'data/qpv_95.geojson',
   elusFile: 'data/elus_95.json',
   finessFile: 'data/finess_95.json',
@@ -108,8 +113,27 @@ if (initialCode) {
   buildLandingMap();
 }
 
+function goToCommune(code, nom) { location.href = `?${new URLSearchParams({ code, nom })}`; }
+
 function buildLandingMap() {
   map.dragging.disable(); map.scrollWheelZoom.disable(); map.doubleClickZoom.disable();
+  $('layers-title').textContent = 'Communes du Val-d’Oise';
+  $('hide-all').textContent = 'Trier par population';
+  let sortByPop = false;
+  let communesData = [];
+
+  fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,population`).then(r => r.json()).then(list => {
+    communesData = list;
+    renderCommuneList();
+  });
+
+  function renderCommuneList() {
+    const sorted = [...communesData].sort((a, b) => sortByPop ? (b.population || 0) - (a.population || 0) : a.nom.localeCompare(b.nom, 'fr'));
+    $('layer-list').innerHTML = sorted.map(c => `<div class="commune-row" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}</span></div>`).join('');
+    $('layer-list').querySelectorAll('[data-code]').forEach(row => row.addEventListener('click', () => goToCommune(row.dataset.code, row.dataset.nom)));
+  }
+  $('hide-all').onclick = () => { sortByPop = !sortByPop; $('hide-all').textContent = sortByPop ? 'Trier par nom' : 'Trier par population'; renderCommuneList(); };
+
   fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
     const layer = L.geoJSON(fc, {
       style: { color: '#71839d', weight: 0.8, opacity: 0.75, fillColor: '#f4f7fb', fillOpacity: 0.5 },
@@ -118,7 +142,7 @@ function buildLandingMap() {
         l.on({
           mouseover: () => l.setStyle({ color: '#000091', weight: 1.4, fillColor: '#e6e6fb', fillOpacity: 0.7 }),
           mouseout: () => layer.resetStyle(l),
-          click: () => { location.href = `?${new URLSearchParams({ code: f.properties.code, nom: f.properties.nom })}`; }
+          click: () => goToCommune(f.properties.code, f.properties.nom)
         });
       }
     }).addTo(map);
@@ -156,7 +180,7 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom), loadFiness(commune.contour), renderQpv(commune.contour)]);
+    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour)]);
     setupDynamicLayers();
     renderControls();
     renderFicheDrawer(true);
@@ -205,9 +229,13 @@ function loadEnergie(code) {
     state.energie = row ? { annee: row.annee, conso: row.conso_totale_mwh, sites: row.nb_sites } : null;
   }).catch(() => { state.energie = null; });
 }
-function loadServices(nom) {
+function loadServices(nom, contour) {
   return fetch(CFG.servicesApi).then(r => r.json()).then(d => {
-    state.services = (d.records || []).filter(r => r.city === nom && r.category !== 'education' && r.category !== 'mobilite' && r.lat && r.lon);
+    state.services = (d.records || []).filter(r => {
+      if (r.category === 'education' || r.category === 'mobilite' || !r.lat || !r.lon) return false;
+      if (r.city === nom) return true;
+      try { return turf.booleanPointInPolygon(turf.point([r.lon, r.lat]), contour); } catch { return false; }
+    });
   }).catch(() => { state.services = []; });
 }
 function loadFiness(contour) {
@@ -285,7 +313,9 @@ function setupDynamicLayers() {
     { id: 'batiments', group: 'Urbanisme et bâti', label: 'Bâtiments', description: 'Référentiel National des Bâtiments — tous bâtiments recensés', color: '#18753c', active: false, kind: 'zoom' },
     { id: 'cadastre', group: 'Urbanisme et bâti', label: 'Parcelles cadastrales', description: 'APICarto IGN — cadastre', color: '#6a4c93', active: false, kind: 'zoom' },
     { id: 'gpu', group: 'Urbanisme et bâti', label: 'Zonage PLU', description: 'Géoportail de l’urbanisme — zones du document d’urbanisme', color: '#0d5c63', active: false, kind: 'zoom' },
+    { id: 'sup', group: 'Urbanisme et bâti', label: 'Servitudes d’utilité publique', description: 'Géoportail de l’urbanisme — SUP', color: '#a15c9e', active: false, kind: 'zoom' },
     { id: 'rpg', group: 'Agriculture', label: 'Parcelles agricoles (RPG)', description: 'Registre parcellaire graphique · APICarto IGN', color: '#8a9a3b', active: false, kind: 'zoom' },
+    { id: 'ocsge', group: 'Artificialisation & ZAN', label: 'Occupation du sol (OCS GE)', description: 'IGN · artificialisation 2024-2026', color: '#c76524', active: false, kind: 'raster' },
     { id: 'znieff1', group: 'Biodiversité', label: 'ZNIEFF de type I', description: 'Secteurs de grand intérêt biologique · APICarto IGN', color: '#e4792f', active: false, kind: 'commune' },
     { id: 'znieff2', group: 'Biodiversité', label: 'ZNIEFF de type II', description: 'Grands ensembles naturels riches · APICarto IGN', color: '#f2b37f', active: false, kind: 'commune' },
     { id: 'pnr', group: 'Biodiversité', label: 'Parcs naturels régionaux', description: 'Vexin français, Oise–Pays de France · APICarto IGN', color: '#2f6f3e', active: false, kind: 'commune' },
@@ -295,9 +325,12 @@ function setupDynamicLayers() {
     { id: 'busIdfm', group: 'Transports', label: 'Arrêts de bus', description: 'Île-de-France Mobilités', color: '#0063cb', active: false, kind: 'commune' },
     { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#000091', active: true, kind: 'commune' },
     { id: 'routes', group: 'Transports', label: 'Routes principales', description: 'DDT 95 · réseau routier', color: '#68737d', active: false, kind: 'commune' },
+    { id: 'cyclable', group: 'Transports', label: 'Pistes cyclables', description: 'DDT 95 · itinéraires cyclables', color: '#18753c', active: false, kind: 'commune' },
     { id: 'inondation', group: 'Risques naturels', label: 'Zonage inondation (PPRI)', description: 'Géorisques · plans de prévention approuvés', color: '#1479c9', active: false, kind: 'wms', wms: 'PPRN_ZONE_INOND' },
     { id: 'mvt', group: 'Risques naturels', label: 'Mouvement de terrain (PPRN)', description: 'Géorisques · plans de prévention approuvés', color: '#7a4a1e', active: false, kind: 'wms', wms: 'PPRN_ZONE_MVT' },
-    { id: 'argiles', group: 'Risques naturels', label: 'Retrait-gonflement des argiles', description: 'Géorisques · aléa cartographié', color: '#e76f00', active: false, kind: 'wms', wms: 'ALEARG_REALISE' }
+    { id: 'argiles', group: 'Risques naturels', label: 'Retrait-gonflement des argiles', description: 'Géorisques · aléa cartographié', color: '#e76f00', active: false, kind: 'wms', wms: 'ALEARG_REALISE' },
+    { id: 'icpe', group: 'Risques technologiques', label: 'Installations classées (ICPE)', description: 'Géorisques', color: '#8a3a12', active: false, kind: 'commune' },
+    { id: 'ssp', group: 'Risques technologiques', label: 'Sites et sols pollués', description: 'Géorisques · BASOL/BASIAS', color: '#5c4033', active: false, kind: 'commune' }
   ];
 
   buildQpvLayer();
@@ -315,6 +348,10 @@ function setupDynamicLayers() {
   buildCommuneLayer('busIdfm', () => buildIdfmArrets('busIdfm', 'bus'));
   buildCommuneLayer('railIdfm', () => buildIdfmArrets('railIdfm', ['rail', 'tram']));
   buildCommuneLayer('routes', buildRoutes);
+  buildCommuneLayer('cyclable', buildCyclable);
+  buildCommuneLayer('icpe', buildIcpe);
+  buildCommuneLayer('ssp', buildSsp);
+  buildOcsgeLayer();
   buildWmsLayers();
 
   map.off('moveend', refreshDetailLayers);
@@ -453,6 +490,70 @@ function buildRoutes() {
   }).catch(() => null);
 }
 
+let cycleCache = null;
+function buildCyclable() {
+  if (!state.contour) return Promise.resolve(null);
+  const loadCycle = cycleCache || fetch(CFG.cycleFile).then(r => r.text()).then(t => JSON.parse(t.slice(t.indexOf('{'))));
+  cycleCache = loadCycle;
+  return loadCycle.then(fc => {
+    const features = (fc.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
+    if (!features.length) return null;
+    return L.geoJSON({ type: 'FeatureCollection', features }, {
+      style: { color: '#18753c', weight: 2.5, opacity: 0.85 },
+      onEachFeature: (f, layer) => layer.bindTooltip(f.properties?.ame_d || 'Aménagement cyclable', { sticky: true })
+    });
+  }).catch(() => null);
+}
+
+function buildIcpe() {
+  const url = new URL(CFG.icpeApi);
+  url.searchParams.set('code_insee', state.code);
+  url.searchParams.set('page_size', '100');
+  return fetch(url).then(r => r.json()).then(d => {
+    const records = d.data || [];
+    if (!records.length) return null;
+    return L.layerGroup(records.filter(r => r.latitude && r.longitude).map(r => {
+      const icon = L.divIcon({ className: '', html: '<div class="theme-marker" style="background:#8a3a12">I</div>', iconSize: [22, 22] });
+      return L.marker([r.latitude, r.longitude], { icon }).bindPopup(`<strong>${escapeHtml(r.raisonSociale)}</strong><br>${escapeHtml(r.adresse1 || '')}<br>${escapeHtml(r.statutSeveso || '')} · ${escapeHtml(r.etatActivite || '')}`);
+    }));
+  }).catch(() => null);
+}
+
+function buildSsp() {
+  const url = new URL(CFG.sspApi);
+  url.searchParams.set('code_insee', state.code);
+  url.searchParams.set('page_size', '100');
+  return fetch(url).then(r => r.json()).then(d => {
+    const records = d.casias?.data || [];
+    if (!records.length) return null;
+    return L.layerGroup(records.filter(r => r.geom?.coordinates).map(r => {
+      const [lon, lat] = r.geom.coordinates;
+      const icon = L.divIcon({ className: '', html: '<div class="theme-marker" style="background:#5c4033">S</div>', iconSize: [22, 22] });
+      return L.marker([lat, lon], { icon }).bindPopup(`<strong>${escapeHtml(r.nom_etablissement || 'Site')}</strong><br>${escapeHtml(r.adresse || '')}<br>${escapeHtml(r.statut || '')}`);
+    }));
+  }).catch(() => null);
+}
+
+function buildOcsgeLayer() {
+  const layer = L.tileLayer(`${CFG.ocsgeWmts}?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OCSGE.ARTIF.2024-2026&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`, { opacity: 0.65, attribution: 'IGN OCS GE' });
+  state.layers.ocsge = layer;
+  if (state.layerDefs.find(l => l.id === 'ocsge')?.active) layer.addTo(map);
+}
+
+async function loadSup() {
+  const b = map.getBounds();
+  const geom = bboxGeom(b);
+  try {
+    const data = await fetch(CFG.gpuSupApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.ok ? r.json() : { features: [] });
+    if (state.layers.sup) map.removeLayer(state.layers.sup);
+    state.layers.sup = L.geoJSON(data, {
+      style: { color: '#a15c9e', weight: 1.5, opacity: 0.9, fillColor: '#a15c9e', fillOpacity: 0.15 },
+      onEachFeature: (f, layer) => layer.bindTooltip(f.properties?.generateur_l || f.properties?.libelle_l || 'Servitude', { sticky: true })
+    });
+    if (state.layerDefs.find(l => l.id === 'sup')?.active) state.layers.sup.addTo(map);
+  } catch (error) { console.warn('SUP indisponible', error); }
+}
+
 function buildIdfmArrets(id, types) {
   const typeList = Array.isArray(types) ? types : [types];
   const whereType = typeList.map(t => `arrtype="${t}"`).join(' or ');
@@ -486,6 +587,7 @@ function refreshDetailLayers() {
   if (state.layerDefs.find(l => l.id === 'cadastre')?.active) loadCadastre();
   if (state.layerDefs.find(l => l.id === 'rpg')?.active) loadRpg();
   if (state.layerDefs.find(l => l.id === 'gpu')?.active) loadGpu();
+  if (state.layerDefs.find(l => l.id === 'sup')?.active) loadSup();
 }
 
 function updateZoomNotice() {
@@ -583,7 +685,7 @@ function openBuildingDrawer(feature) {
     ['Adresse', addr ? `${addr.street_number || ''} ${addr.street || ''}, ${addr.city_zipcode || ''} ${addr.city_name || ''}` : null],
     ['Identifiant RNB', feature.id]
   ].filter(([, v]) => v);
-  $('drawer-body').innerHTML = `<section class="result-section"><h3>Bâtiment</h3><dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section><section class="result-section" id="bdnbSection"><h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Recherche en cours…</p></section>`;
+  $('drawer-body').innerHTML = `<section class="result-section"><h3>Bâtiment</h3><dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section><section class="result-section" id="bdnbSection"><h3>Détail du bâtiment (BDNB)</h3><p class="source-note">Recherche en cours…</p></section>`;
   $('drawer-actions').innerHTML = `<button id="drawer-back" type="button">← Retour à la fiche commune</button>`;
   $('drawer-back').onclick = () => renderFicheDrawer(true);
   $('drawer').classList.add('open');
@@ -596,24 +698,30 @@ async function loadBdnb(rnbId) {
   try {
     const rel = await fetch(`${CFG.bdnbApi}/donnees/batiment_construction?rnb_id=eq.${rnbId}&select=batiment_groupe_id&limit=1`).then(r => r.json());
     const groupId = rel?.[0]?.batiment_groupe_id;
-    if (!groupId) { section.innerHTML = '<h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Aucune correspondance BDNB pour ce bâtiment.</p>'; return; }
-    const [dpe, rpls, risks] = await Promise.all([
+    if (!groupId) { section.innerHTML = '<h3>Détail du bâtiment (BDNB)</h3><p class="source-note">Aucune correspondance BDNB pour ce bâtiment.</p>'; return; }
+    const [dpe, rpls, risks, ffo] = await Promise.all([
       fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_dpe_representatif_logement?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null),
       fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_rpls?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null),
-      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_risques?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null)
+      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_risques?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null),
+      fetch(`${CFG.bdnbApi}/donnees/batiment_groupe_ffo_bat?batiment_groupe_id=eq.${groupId}&limit=1`).then(r => r.json()).then(d => d[0]).catch(() => null)
     ]);
     const rows = [
+      ffo?.usage_niveau_1_txt ? ['Usage principal', ffo.usage_niveau_1_txt] : null,
+      ffo?.annee_construction ? ['Année de construction (fichiers fonciers)', ffo.annee_construction] : null,
+      ffo?.nb_log ? ['Nombre de logements', formatNumber(ffo.nb_log)] : null,
+      ffo?.nb_niveau ? ['Nombre de niveaux', ffo.nb_niveau] : null,
+      ffo?.mat_mur_txt ? ['Matériau des murs', ffo.mat_mur_txt] : null,
+      ffo?.mat_toit_txt ? ['Matériau de toiture', ffo.mat_toit_txt] : null,
       dpe?.classe_bilan_dpe ? ['DPE — classe énergie', dpe.classe_bilan_dpe] : null,
       dpe?.classe_emission_ges ? ['DPE — classe GES', dpe.classe_emission_ges] : null,
-      dpe?.annee_construction_dpe ? ['Année de construction', dpe.annee_construction_dpe] : null,
       rpls?.nb_log ? ['Logements du parc social (RPLS)', formatNumber(rpls.nb_log)] : null,
       risks?.alea_argile ? ['Aléa retrait-gonflement argiles', risks.alea_argile] : null,
       risks?.alea_radon ? ['Aléa radon', risks.alea_radon] : null,
       risks?.alea_sismique ? ['Aléa sismique', risks.alea_sismique] : null
     ].filter(Boolean);
-    section.innerHTML = `<h3>DPE, logement social et risques (BDNB)</h3>${rows.length ? `<dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : '<p class="source-note">Aucune donnée BDNB publiée pour ce bâtiment.</p>'}<p class="source-note">Base de Données Nationale des Bâtiments — voir aussi <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a>.</p>`;
+    section.innerHTML = `<h3>Détail du bâtiment (BDNB)</h3>${rows.length ? `<dl class="data-grid">${rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : '<p class="source-note">Aucune donnée BDNB publiée pour ce bâtiment.</p>'}<p class="source-note">Base de Données Nationale des Bâtiments — voir aussi <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a>.</p>`;
   } catch (error) {
-    section.innerHTML = '<h3>DPE, logement social et risques (BDNB)</h3><p class="source-note">Interrogation BDNB indisponible pour le moment.</p>';
+    section.innerHTML = '<h3>Détail du bâtiment (BDNB)</h3><p class="source-note">Interrogation BDNB indisponible pour le moment.</p>';
   }
 }
 
@@ -642,7 +750,7 @@ function toggleLayer(id) {
   if (def.active) {
     if (layer) layer.addTo(map);
     if (def.kind === 'zoom' && map.getZoom() >= CFG.zoomGated) {
-      if (id === 'batiments') loadBatiments(); else if (id === 'cadastre') loadCadastre(); else if (id === 'rpg') loadRpg(); else if (id === 'gpu') loadGpu();
+      if (id === 'batiments') loadBatiments(); else if (id === 'cadastre') loadCadastre(); else if (id === 'rpg') loadRpg(); else if (id === 'gpu') loadGpu(); else if (id === 'sup') loadSup();
     }
   } else if (layer) {
     map.removeLayer(layer);
