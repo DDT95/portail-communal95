@@ -32,6 +32,7 @@ const CFG = {
   eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
   roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
   mobilityFile: 'https://ddt95.github.io/transport95/mobility95.js',
+  voInseeApi: 'https://ddt95.github.io/VO-Insee/data/processed/commune_profiles.json',
   cycleFile: 'https://ddt95.github.io/transport95/cycle95.js',
   icpeApi: 'https://www.georisques.gouv.fr/api/v1/installations_classees',
   sspApi: 'https://www.georisques.gouv.fr/api/v1/ssp',
@@ -66,6 +67,7 @@ const state = {
   layers: {}, layerDefs: [],
   drawerMode: 'commune'
 };
+const compareSelection = new Map();
 
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? '—').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c));
@@ -116,6 +118,67 @@ if (initialCode) {
 
 function goToCommune(code, nom) { window.open(`?${new URLSearchParams({ code, nom })}`, '_blank', 'noopener'); }
 
+function updateCompareBar() {
+  const bar = $('compareBar'), text = $('compareBarText'), openBtn = $('compareOpen');
+  if (!bar) return;
+  const n = compareSelection.size;
+  bar.hidden = n === 0;
+  text.textContent = n === 0 ? '' : `${n} commune${n > 1 ? 's' : ''} sélectionnée${n > 1 ? 's' : ''} sur 3`;
+  openBtn.disabled = n < 2;
+}
+$('compareOpen')?.addEventListener('click', openCompareDialog);
+$('closeCompare')?.addEventListener('click', () => $('compareDialog').close());
+$('compareDialog')?.addEventListener('click', e => { if (e.target === $('compareDialog')) $('compareDialog').close(); });
+
+async function openCompareDialog() {
+  const entries = [...compareSelection.entries()];
+  $('compareBody').style.setProperty('--cols', entries.length);
+  $('compareBody').innerHTML = entries.map(([, nom]) => `<div class="compare-col"><h3>${escapeHtml(nom)}</h3><p class="source-note">Chargement…</p></div>`).join('');
+  $('compareDialog').showModal();
+  try {
+    const profiles = await fetch(CFG.voInseeApi).then(r => r.json());
+    $('compareBody').innerHTML = entries.map(([code, nom]) => renderCompareColumn(code, nom, profiles[code])).join('');
+  } catch (error) {
+    $('compareBody').innerHTML = '<p class="source-note">Données Insee indisponibles pour le moment.</p>';
+  }
+}
+
+function renderCompareColumn(code, nom, profile) {
+  if (!profile) return `<div class="compare-col"><h3>${escapeHtml(nom)}</h3><p class="source-note">Aucune donnée Insee disponible.</p></div>`;
+  const t = profile.themes || {};
+  const pop = t.habitants?.population_totale?.value;
+  const pyramide = t.habitants?.pyramide_ages?.tranches || [];
+  const chomage = t.emploi_mobilites?.chomage_rp?.taux_chomage_15_64?.value;
+  const occ = t.logement?.occupation || {};
+  const rp = occ.proprietaires?.denominator || null;
+  const proprietaires = occ.proprietaires?.value, locPrive = occ.locataires_prive?.value, locSocial = occ.locataires_social?.value;
+  const partSocial = t.logement?.social?.part_rpls_residences_principales?.value;
+  const pctOf = (v, d) => v != null && d ? Math.round((v / d) * 100) : null;
+
+  const kpiRows = [
+    ['Population', pop ? formatNumber(Math.round(pop)) + ' hab.' : null],
+    ['Taux de chômage (15-64 ans)', chomage != null ? chomage.toFixed(1) + ' %' : null],
+    ['Logement social', partSocial != null ? partSocial.toFixed(1) + ' %' : null]
+  ].filter(([, v]) => v);
+
+  const ageBars = pyramide.map(tr => `<div class="compare-bar-row"><div><span>${escapeHtml(tr.label)}</span><span>${tr.pct}%</span></div><div class="compare-bar-track"><div class="compare-bar-fill" style="width:${tr.pct}%;background:#c76524"></div></div></div>`).join('');
+
+  const occRows = [
+    ['Propriétaires', pctOf(proprietaires, rp), '#18753c'],
+    ['Locataires (privé)', pctOf(locPrive, rp), '#0063cb'],
+    ['Locataires (social)', pctOf(locSocial, rp), '#6a4c93']
+  ].filter(([, pct]) => pct != null);
+  const occBars = occRows.map(([label, pct, color]) => `<div class="compare-bar-row"><div><span>${escapeHtml(label)}</span><span>${pct}%</span></div><div class="compare-bar-track"><div class="compare-bar-fill" style="width:${pct}%;background:${color}"></div></div></div>`).join('');
+
+  return `<div class="compare-col">
+    <h3>${escapeHtml(nom)}</h3>
+    ${kpiRows.length ? `<div class="compare-block"><h4>Chiffres clés</h4>${kpiRows.map(([l, v]) => `<div class="compare-stat"><span>${escapeHtml(l)}</span><strong>${escapeHtml(v)}</strong></div>`).join('')}</div>` : ''}
+    ${ageBars ? `<div class="compare-block"><h4>Pyramide des âges</h4><div class="compare-bars">${ageBars}</div></div>` : ''}
+    ${occBars ? `<div class="compare-block"><h4>Statut d’occupation des logements</h4><div class="compare-bars">${occBars}</div></div>` : ''}
+    <p class="source-note">Insee · RP2023, Filosofi — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p>
+  </div>`;
+}
+
 function buildLandingMap() {
   map.dragging.disable(); map.scrollWheelZoom.disable(); map.doubleClickZoom.disable();
   $('layers-title').textContent = 'Communes du Val-d’Oise';
@@ -130,10 +193,23 @@ function buildLandingMap() {
 
   function renderCommuneList() {
     const sorted = [...communesData].sort((a, b) => sortByPop ? (b.population || 0) - (a.population || 0) : a.nom.localeCompare(b.nom, 'fr'));
-    $('layer-list').innerHTML = sorted.map(c => `<div class="commune-row" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}</span></div>`).join('');
-    $('layer-list').querySelectorAll('[data-code]').forEach(row => row.addEventListener('click', () => goToCommune(row.dataset.code, row.dataset.nom)));
+    $('layer-list').innerHTML = sorted.map(c => {
+      const checked = compareSelection.has(c.code);
+      const disabled = !checked && compareSelection.size >= 3;
+      return `<div class="commune-row" style="${disabled ? 'opacity:.45' : ''}"><button class="switch" type="button" data-compare="${c.code}" data-nom="${escapeHtml(c.nom)}" aria-label="Sélectionner ${escapeHtml(c.nom)} pour comparer" aria-pressed="${checked}" ${disabled ? 'disabled' : ''}></button><div class="commune-row-body" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}</span></div></div>`;
+    }).join('');
+    $('layer-list').querySelectorAll('.commune-row-body').forEach(row => row.addEventListener('click', () => goToCommune(row.dataset.code, row.dataset.nom)));
+    $('layer-list').querySelectorAll('[data-compare]').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const code = btn.dataset.compare, nom = btn.dataset.nom;
+      if (compareSelection.has(code)) compareSelection.delete(code);
+      else if (compareSelection.size < 3) compareSelection.set(code, nom);
+      renderCommuneList();
+      updateCompareBar();
+    }));
   }
   $('hide-all').onclick = () => { sortByPop = !sortByPop; $('hide-all').textContent = sortByPop ? 'Trier par nom' : 'Trier par population'; renderCommuneList(); };
+  updateCompareBar();
 
   fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
     const layer = L.geoJSON(fc, {

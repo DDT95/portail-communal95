@@ -8,7 +8,7 @@
   <title>Portail communal · Val-d’Oise</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <a class="skip-link" href="#map">Aller à la carte</a>
@@ -68,6 +68,18 @@
 
 <div id="printSheet" class="print-sheet"></div>
 
+<div class="compare-bar" id="compareBar" hidden>
+  <span id="compareBarText">0 commune sélectionnée</span>
+  <button id="compareOpen" type="button" disabled>Comparer</button>
+</div>
+
+<dialog id="compareDialog" class="export-dialog compare-dialog">
+  <button class="dialog-x" id="closeCompare" type="button" aria-label="Fermer">×</button>
+  <small>DONNÉES & ÉVOLUTIONS</small>
+  <h2>Comparer les communes</h2>
+  <div id="compareBody" class="compare-body"></div>
+</dialog>
+
 <dialog id="exportDialog" class="export-dialog">
   <button class="dialog-x" id="closeExport" type="button" aria-label="Fermer">×</button>
   <small>EXPORT À LA DEMANDE</small>
@@ -85,6 +97,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
-<script src="app.js?v=16"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
