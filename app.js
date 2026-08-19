@@ -986,52 +986,12 @@ $('openExport').addEventListener('click', () => exportDialog.showModal());
 $('closeExport').addEventListener('click', () => exportDialog.close());
 exportDialog.addEventListener('click', e => { if (e.target === exportDialog) exportDialog.close(); });
 
-async function buildPrintSheet() {
+function openPrintPage() {
+  exportDialog.close();
   renderFicheDrawer(true);
-  let mapImg = '';
-  try {
-    map.invalidateSize();
-    await new Promise(r => setTimeout(r, 300));
-    const canvas = await html2canvas(document.getElementById('map'), { useCORS: true, scale: 1.5 });
-    mapImg = `<img class="ps-map" src="${canvas.toDataURL('image/jpeg', 0.9)}" alt="Carte de ${escapeHtml(state.nom)}">`;
-  } catch (error) { console.warn('Capture carte indisponible', error); }
-  const sections = $('drawer-body').innerHTML;
-  $('printSheet').innerHTML = `
-    <div class="ps-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(state.nom || 'Commune')}</strong></div></div>
-    ${mapImg}
-    ${sections}
-    <p class="ps-foot">Fiche générée le ${new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })} · ${location.href} · DDT du Val-d’Oise</p>
-  `;
+  window.open('print.html', '_blank');
 }
 
-$('printProfile').addEventListener('click', async () => {
-  exportDialog.close();
-  await buildPrintSheet();
-  document.body.classList.add('print-mode');
-  setTimeout(() => {
-    window.print();
-    document.body.classList.remove('print-mode');
-  }, 50);
-});
+$('makePdf').addEventListener('click', openPrintPage);
 
-$('makePdf').addEventListener('click', async () => {
-  exportDialog.close();
-  document.body.classList.add('exporting');
-  const pdfWindow = window.open('', '_blank');
-  if (pdfWindow) pdfWindow.document.write('<title>Génération du PDF…</title><body style="font-family:sans-serif;padding:60px;color:#10104b">Génération de la fiche PDF en cours…</body>');
-  try {
-    await buildPrintSheet();
-    document.body.classList.add('print-mode');
-    const blob = await html2pdf().set({
-      margin: 8,
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(document.getElementById('printSheet')).outputPdf('blob');
-    const url = URL.createObjectURL(blob);
-    if (pdfWindow && !pdfWindow.closed) pdfWindow.location.href = url; else window.open(url, '_blank', 'noopener');
-  } finally {
-    document.body.classList.remove('exporting');
-    document.body.classList.remove('print-mode');
-  }
-});
+window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, escapeHtml, formatNumber };
