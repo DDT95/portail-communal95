@@ -313,6 +313,8 @@ async function loadCommune(code, nomHint) {
   state.code = code;
   setLoading(true, 'Chargement du territoire');
   $('compareBar').hidden = true;
+  $('communeForm').hidden = true;
+  $('communeFilters').hidden = true;
   try {
     const commune = await fetch(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
     if (!commune.nom) throw new Error('Commune introuvable');
@@ -1099,4 +1101,4 @@ function openPrintPage() {
 
 $('makePdf').addEventListener('click', openPrintPage);
 
-window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, escapeHtml, formatNumber };
+window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, escapeHtml, formatNumber, octeUrl: () => `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf` };

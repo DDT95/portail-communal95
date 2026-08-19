@@ -119,6 +119,12 @@
   // Page 2 : synthèse (chiffres clés, élus, risques...)
   document.getElementById('dataTitle').textContent = state.nom || 'Commune';
   document.getElementById('dataBody').innerHTML = opener.document.getElementById('drawer-body').innerHTML;
+  if (app.octeUrl) {
+    const octeBlock = document.createElement('div');
+    octeBlock.className = 'data-octe';
+    octeBlock.innerHTML = `<strong>Fiche officielle complète (OCTE)</strong> — pour l’ensemble des indicateurs réglementaires et fonciers (SRHH, PLH, SDRIF-E, gestion de l’eau, démarches territoriales…), consultez la fiche OCTE éditée par la DDT du Val-d’Oise : <a href="${app.octeUrl()}" target="_blank" rel="noreferrer">${escapeHtml(state.nom)}.pdf ↗</a>`;
+    document.getElementById('dataBody').appendChild(octeBlock);
+  }
   document.getElementById('dataFoot').textContent = `Fiche générée le ${today} · Portail communal · DDT du Val-d’Oise`;
 
   const statusEl = document.getElementById('pdfStatus');
@@ -128,9 +134,27 @@
     const mapCanvas = await html2canvas(document.getElementById('printPage'), { scale: 2.2, useCORS: true, backgroundColor: '#ffffff' });
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
     doc.addImage(mapCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
-    const dataCanvas = await html2canvas(document.getElementById('dataPage'), { scale: 2.2, useCORS: true, backgroundColor: '#ffffff' });
-    doc.addPage('a4', 'portrait');
-    doc.addImage(dataCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+
+    // Page(s) de données : la synthèse peut dépasser une page A4, on découpe
+    // le long canevas capturé en tranches de 297mm plutôt que de l'écraser
+    // dans une seule page (ce qui rendait le texte illisible).
+    const dataNode = document.getElementById('dataPage');
+    const dataCanvas = await html2canvas(dataNode, { scale: 2.2, useCORS: true, backgroundColor: '#ffffff', windowWidth: dataNode.scrollWidth, windowHeight: dataNode.scrollHeight });
+    const pxPerMm = dataCanvas.width / 210;
+    const pageHeightPx = Math.round(297 * pxPerMm);
+    const pageCount = Math.max(1, Math.ceil(dataCanvas.height / pageHeightPx));
+    const slice = document.createElement('canvas');
+    slice.width = dataCanvas.width;
+    const sliceCtx = slice.getContext('2d');
+    for (let i = 0; i < pageCount; i++) {
+      const sliceHeightPx = Math.min(pageHeightPx, dataCanvas.height - i * pageHeightPx);
+      slice.height = sliceHeightPx;
+      sliceCtx.clearRect(0, 0, slice.width, slice.height);
+      sliceCtx.drawImage(dataCanvas, 0, i * pageHeightPx, dataCanvas.width, sliceHeightPx, 0, 0, dataCanvas.width, sliceHeightPx);
+      doc.addPage('a4', 'portrait');
+      doc.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, sliceHeightPx / pxPerMm, undefined, 'FAST');
+    }
+
     const blobUrl = URL.createObjectURL(doc.output('blob'));
     window.location.replace(blobUrl);
   }
