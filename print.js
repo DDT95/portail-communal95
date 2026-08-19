@@ -11,7 +11,6 @@
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   document.getElementById('printPage').hidden = mode !== 'carte';
-  document.getElementById('dataPage').hidden = mode !== 'fiche';
 
   // ---------- Carte DDT (page A3) ----------
   function buildCarte() {
@@ -133,15 +132,67 @@
 
   // ---------- Fiche communale (page(s) A4) ----------
   function buildFiche() {
-    document.getElementById('dataTitle').textContent = state.nom || 'Commune';
-    document.getElementById('dataBody').innerHTML = opener.document.getElementById('drawer-body').innerHTML;
+    const srcHost = document.getElementById('drawer-body-src');
+    srcHost.innerHTML = opener.document.getElementById('drawer-body').innerHTML;
     if (app.octeUrl) {
       const octeBlock = document.createElement('div');
       octeBlock.className = 'data-octe';
       octeBlock.innerHTML = `<strong>Fiche officielle complète (OCTE)</strong> — pour l’ensemble des indicateurs réglementaires et fonciers (SRHH, PLH, SDRIF-E, gestion de l’eau, démarches territoriales…), consultez la fiche OCTE éditée par la DDT du Val-d’Oise : <a href="${app.octeUrl()}" target="_blank" rel="noreferrer">${escapeHtml(state.nom)}.pdf ↗</a>`;
-      document.getElementById('dataBody').appendChild(octeBlock);
+      srcHost.appendChild(octeBlock);
     }
-    document.getElementById('dataFoot').textContent = `Fiche générée le ${today} · Portail communal · DDT du Val-d’Oise`;
+    const sections = Array.from(srcHost.children);
+    const footText = `Fiche générée le ${today} · Portail communal · DDT du Val-d’Oise`;
+
+    // Mesure la hauteur de chaque section pour répartir sur autant de pages
+    // A4 que nécessaire, sans jamais couper une section en deux — remplace
+    // le découpage brutal au pixel qui tranchait le texte en plein milieu.
+    const mmTest = document.createElement('div');
+    mmTest.style.cssText = 'position:absolute;visibility:hidden;width:100mm';
+    document.body.appendChild(mmTest);
+    const pxPerMm = mmTest.offsetWidth / 100;
+    document.body.removeChild(mmTest);
+    const maxHeightPx = pxPerMm * 289; // 297mm - marge de sécurité ~8mm
+
+    const measurePage = document.createElement('div');
+    measurePage.className = 'data-page';
+    measurePage.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;height:auto';
+    measurePage.innerHTML = '<header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span></span><strong></strong></div></header><div id="measureBody"></div>';
+    document.body.appendChild(measurePage);
+    const measureBody = measurePage.querySelector('#measureBody');
+
+    const pages = [];
+    let current = [];
+    sections.forEach(sec => {
+      const clone = sec.cloneNode(true);
+      measureBody.appendChild(clone);
+      if (measurePage.scrollHeight > maxHeightPx && current.length > 0) {
+        measureBody.removeChild(clone);
+        pages.push(current);
+        current = [sec];
+        measureBody.innerHTML = '';
+        measureBody.appendChild(clone);
+      } else {
+        current.push(sec);
+      }
+    });
+    if (current.length) pages.push(current);
+    document.body.removeChild(measurePage);
+
+    const container = document.getElementById('dataPages');
+    container.innerHTML = pages.map((pageSections, i) => `
+      <div class="data-page" id="dataPage-${i}">
+        <header class="data-page-head">
+          <img src="prefet-val-doise.svg" alt="">
+          <div>
+            <span>PORTAIL COMMUNAL · VAL-D’OISE</span>
+            <strong>${escapeHtml(state.nom || 'Commune')}</strong>
+            ${pages.length > 1 ? `<em>Fiche communale — page ${i + 1}/${pages.length}</em>` : ''}
+          </div>
+        </header>
+        <div class="data-body">${pageSections.map(s => s.outerHTML).join('')}</div>
+        ${i === pages.length - 1 ? `<p class="data-foot">${escapeHtml(footText)}</p>` : ''}
+      </div>
+    `).join('');
   }
 
   async function buildPdf() {
@@ -152,25 +203,16 @@
       doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
       doc.addImage(mapCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
     } else {
-      // La synthèse peut dépasser une page A4 : on découpe le long canevas
-      // capturé en tranches de 297mm plutôt que de l'écraser dans une seule
-      // page (ce qui rendait le texte illisible).
-      const dataNode = document.getElementById('dataPage');
-      const dataCanvas = await html2canvas(dataNode, { scale: 2.2, useCORS: true, backgroundColor: '#ffffff', windowWidth: dataNode.scrollWidth, windowHeight: dataNode.scrollHeight });
-      const pxPerMm = dataCanvas.width / 210;
-      const pageHeightPx = Math.round(297 * pxPerMm);
-      const pageCount = Math.max(1, Math.ceil(dataCanvas.height / pageHeightPx));
-      const slice = document.createElement('canvas');
-      slice.width = dataCanvas.width;
-      const sliceCtx = slice.getContext('2d');
+      // Chaque page a déjà été composée à la bonne hauteur (voir buildFiche,
+      // qui répartit les sections sans jamais en couper une en deux) : on
+      // capture donc une image par page plutôt que de découper un long
+      // canevas au pixel près.
+      const dataPages = Array.from(document.querySelectorAll('#dataPages .data-page'));
       doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      for (let i = 0; i < pageCount; i++) {
-        const sliceHeightPx = Math.min(pageHeightPx, dataCanvas.height - i * pageHeightPx);
-        slice.height = sliceHeightPx;
-        sliceCtx.clearRect(0, 0, slice.width, slice.height);
-        sliceCtx.drawImage(dataCanvas, 0, i * pageHeightPx, dataCanvas.width, sliceHeightPx, 0, 0, dataCanvas.width, sliceHeightPx);
+      for (let i = 0; i < dataPages.length; i++) {
+        const canvas = await html2canvas(dataPages[i], { scale: 2.2, useCORS: true, backgroundColor: '#ffffff' });
         if (i > 0) doc.addPage('a4', 'portrait');
-        doc.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, sliceHeightPx / pxPerMm, undefined, 'FAST');
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
       }
     }
     const blobUrl = URL.createObjectURL(doc.output('blob'));

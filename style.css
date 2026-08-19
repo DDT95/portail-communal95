@@ -115,3 +115,4 @@ body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%
 .commune-filter-row label>div{display:flex;align-items:center;gap:4px;margin-top:4px}
 .commune-filter-row input{width:0;flex:1;border:1px solid #c7c9d5;border-radius:8px;padding:7px 6px;font-size:11px;color:var(--ink)}
 .commune-filter-row span{color:#aaa;font-size:10px}
+.clear-filters{align-self:flex-start;margin-top:2px;border:0;background:none;color:var(--blue);font-size:10px;font-weight:700;text-decoration:underline;padding:0}

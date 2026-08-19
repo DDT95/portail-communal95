@@ -292,6 +292,11 @@ function buildLandingMap() {
   }
   $('communeSort').addEventListener('change', renderCommuneList);
   ['popMin', 'popMax', 'surfMin', 'surfMax'].forEach(id => $(id).addEventListener('input', renderCommuneList));
+  $('clearFilters').addEventListener('click', () => {
+    ['popMin', 'popMax', 'surfMin', 'surfMax'].forEach(id => { $(id).value = ''; });
+    $('communeSort').value = 'nom';
+    renderCommuneList();
+  });
   updateCompareBar();
 
   fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
