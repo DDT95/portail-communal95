@@ -28,8 +28,6 @@ const CFG = {
   hubeauApi: 'https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/communes_udi',
   odreApi: 'https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/consommation-annuelle-d-electricite-et-gaz-par-commune/records',
   bdnbApi: 'https://api.bdnb.io/v1/bdnb',
-  eauCoursEau: 'https://ddt95.github.io/eau95/data/processed/cours_eau.geojson',
-  eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
   roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
   mobilityFile: 'https://ddt95.github.io/transport95/mobility95.js',
   voInseeApi: 'https://ddt95.github.io/VO-Insee/data/processed/commune_profiles.json',
@@ -427,8 +425,6 @@ function setupDynamicLayers() {
     { id: 'ecoles', group: 'Services publics', label: 'Établissements scolaires', description: 'Écoles, collèges, lycées publics et privés sous contrat · data.education.gouv.fr', color: '#c76524', active: true, kind: 'commune' },
     ...Object.entries(SERVICE_CATS).map(([cat, meta]) => ({ id: 'svc_' + cat, group: 'Services publics', label: meta.label, description: 'Service-Public.gouv.fr / OpenStreetMap · acces-services95', color: meta.color, active: cat === 'france_services' || cat === 'administration', kind: 'commune' })),
     ...Object.entries(FINESS_CATS).map(([cat, meta]) => ({ id: 'san_' + cat, group: 'Santé & solidarité', label: meta.label, description: 'Répertoire FINESS · ministère de la Santé', color: meta.color, active: cat === 'hopitaux' || cat === 'medecins', kind: 'commune' })),
-    { id: 'coursEau', group: 'Eau', label: 'Cours d’eau', description: 'DDT 95 · arrêté préfectoral 2017-13817', color: '#0063cb', active: true, kind: 'commune' },
-    { id: 'stationsEau', group: 'Eau', label: 'Stations de mesure', description: 'DDT 95 · qualité de l’eau', color: '#e4794a', active: false, kind: 'commune' },
     { id: 'batiments', group: 'Urbanisme et bâti', label: 'Bâtiments', description: 'Référentiel National des Bâtiments — tous bâtiments recensés', color: '#18753c', active: false, kind: 'zoom' },
     { id: 'cadastre', group: 'Urbanisme et bâti', label: 'Parcelles cadastrales', description: 'APICarto IGN — cadastre', color: '#6a4c93', active: false, kind: 'zoom' },
     { id: 'gpu', group: 'Urbanisme et bâti', label: 'Zonage PLU', description: 'Géoportail de l’urbanisme — zones du document d’urbanisme', color: '#0d5c63', active: false, kind: 'zoom' },
@@ -457,8 +453,6 @@ function setupDynamicLayers() {
   buildCommuneLayer('ecoles', buildEcoles);
   Object.keys(SERVICE_CATS).forEach(cat => buildCommuneLayer('svc_' + cat, () => buildServiceLayer(cat)));
   Object.keys(FINESS_CATS).forEach(cat => buildCommuneLayer('san_' + cat, () => buildFinessLayer(cat)));
-  buildCommuneLayer('coursEau', buildCoursEau);
-  buildCommuneLayer('stationsEau', buildStationsEau);
   buildCommuneLayer('znieff1', () => buildNature('znieff1', 'znieff1'));
   buildCommuneLayer('znieff2', () => buildNature('znieff2', 'znieff2'));
   buildCommuneLayer('pnr', () => buildNature('pnr', 'pnr'));
@@ -529,31 +523,6 @@ function buildFinessLayer(category) {
     const icon = L.divIcon({ className: '', html: `<div class="theme-marker svc" style="background:${meta.color}">${r.urgences ? '+' : meta.label[0]}</div>`, iconSize: [22, 22] });
     return L.marker([r.lat, r.lon], { icon }).bindPopup(`<strong>${escapeHtml(r.nom)}</strong><br>${escapeHtml(meta.label)}${r.urgences ? ' · Urgences' : ''}<br>${escapeHtml(r.adresse)}${r.tel ? '<br>' + escapeHtml(r.tel) : ''}`);
   })));
-}
-
-function buildCoursEau() {
-  if (!state.contour) return Promise.resolve(null);
-  return fetch(CFG.eauCoursEau).then(r => r.json()).then(d => {
-    const features = (d.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
-    if (!features.length) return null;
-    return L.geoJSON({ type: 'FeatureCollection', features }, {
-      style: { color: '#0063cb', weight: 2, opacity: 0.85 },
-      onEachFeature: (f, layer) => layer.bindTooltip(f.properties?.NOM || 'Cours d’eau', { sticky: true })
-    });
-  }).catch(() => null);
-}
-
-function buildStationsEau() {
-  if (!state.contour) return Promise.resolve(null);
-  return fetch(CFG.eauStations).then(r => r.json()).then(d => {
-    const features = (d.features || []).filter(f => { try { return turf.booleanPointInPolygon(f, state.contour); } catch { return false; } });
-    if (!features.length) return null;
-    return L.layerGroup(features.map(f => {
-      const [lon, lat] = f.geometry.coordinates;
-      const icon = L.divIcon({ className: '', html: '<div class="theme-marker" style="background:#e4794a">S</div>', iconSize: [22, 22] });
-      return L.marker([lat, lon], { icon }).bindPopup(`<strong>${escapeHtml(f.properties?.LbStationM || 'Station de mesure')}</strong><br>${escapeHtml(f.properties?.NomCoursdE || '')}`);
-    }));
-  }).catch(() => null);
 }
 
 function buildNature(id, endpoint) {
