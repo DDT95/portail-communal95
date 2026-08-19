@@ -36,6 +36,8 @@ const CFG = {
   sspApi: 'https://www.georisques.gouv.fr/api/v1/ssp',
   gpuSupApi: 'https://apicarto.ign.fr/api/gpu/assiette-sup-s',
   ocsgeWmts: 'https://data.geopf.fr/wmts',
+  mosApi: 'https://geoweb.iau-idf.fr/agsmap1/rest/services/OPENDATA/OpendataIAU4/MapServer/25/query',
+  foncierPublicFile: 'https://ddt95.github.io/urbanisme95/data/foncier-public-95.json',
   qpvFile: 'data/qpv_95.geojson',
   elusFile: 'data/elus_95.json',
   finessFile: 'data/finess_95.json',
@@ -58,6 +60,22 @@ const FINESS_CATS = {
   ehpad: { label: 'EHPAD & personnes âgées', color: '#8146a1' },
   handicap: { label: 'Accueil handicap & enfance', color: '#0078f3' }
 };
+
+const MOS_LABELS = {
+  1: 'Bois ou forêts', 2: 'Coupes ou clairières en forêts', 3: 'Peupleraies', 4: 'Espaces ouverts à végétation arborée ou herbacée', 5: 'Berges', 6: 'Terres labourées', 7: 'Prairies', 8: 'Vergers, pépinières', 9: 'Maraîchage, horticulture', 10: 'Cultures intensives sous serres', 11: 'Eau fermée', 12: 'Cours d’eau', 13: 'Parcs ou jardins publics', 14: 'Autres espaces verts publics', 15: 'Jardins familiaux', 16: 'Jardins de l’habitat', 17: 'Terrains de sport en plein air', 18: 'Tennis découverts', 19: 'Baignade', 20: 'Golfs', 21: 'Hippodromes', 22: 'Camping, caravaning', 23: 'Parcs liés aux activités de loisirs', 24: 'Esplanades et places', 25: 'Cimetières', 26: 'Surfaces engazonnées avec ou sans arbustes', 27: 'Terrains vacants', 28: 'Habitat pavillonnaire', 29: 'Ensemble d’habitat pavillonnaire', 30: 'Habitat rural', 31: 'Habitat continu bas', 32: 'Habitat collectif continu haut', 33: 'Habitat collectif discontinu', 34: 'Prisons', 35: 'Habitat autre', 36: 'Activités en tissu urbain mixte', 37: 'Grandes emprises industrielles', 38: 'Zones d’activités économiques', 39: 'Entreposage à l’air libre', 40: 'Entrepôts logistiques', 41: 'Stockage de données', 42: 'Grandes surfaces commerciales', 43: 'Autres commerces', 44: 'Stations-services', 45: 'Bureaux', 46: 'Production d’eau', 47: 'Assainissement', 48: 'Électricité', 49: 'Gaz', 50: 'Pétrole', 51: 'Chaleur', 52: 'Extraction de matériaux', 53: 'Tri et valorisation des déchets', 54: 'Stockage de déchets', 55: 'Installations sportives couvertes', 56: 'Centres équestres', 57: 'Piscines couvertes', 58: 'Piscines de plein air', 59: 'Circuits sportifs', 60: 'Enseignement du premier degré', 61: 'Enseignement secondaire', 62: 'Enseignement supérieur', 63: 'Centre de formation professionnelle', 64: 'Hôpitaux, cliniques', 65: 'Autres équipements de santé', 66: 'Grands centres de congrès et d’exposition', 67: 'Équipements culturels et de loisirs', 68: 'Sièges de grandes administrations', 69: 'Équipements de sécurité civile', 70: 'Équipements à accès public limité', 71: 'Lieux de culte', 72: 'Autres équipements de proximité', 73: 'Emprise ferrée', 74: 'Voies routières', 75: 'Parkings de surface', 76: 'Parkings en étages', 77: 'Gares routières, dépôts de bus', 78: 'Installations aéroportuaires', 79: 'Chantiers'
+};
+function mosColor(code) {
+  if (code <= 5) return '#18753c';
+  if (code <= 10) return '#e3b341';
+  if (code <= 12) return '#0098d8';
+  if (code <= 27) return '#62b467';
+  if (code <= 35) return '#e07a9a';
+  if (code <= 54) return '#a05a9c';
+  if (code <= 72) return '#5576b9';
+  if (code <= 78) return '#737b87';
+  return '#e1000f';
+}
+const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4': '#18753c', '5': '#0098d8', '6': '#e3b341', '9': '#7b61a8' };
 
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
@@ -262,7 +280,7 @@ function buildLandingMap() {
         });
       }
     }).addTo(map);
-    requestAnimationFrame(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [24, 24], animate: false }); });
+    requestAnimationFrame(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [55, 55], maxZoom: 11, animate: false }); });
   });
 }
 
@@ -429,6 +447,8 @@ function setupDynamicLayers() {
     { id: 'cadastre', group: 'Urbanisme et bâti', label: 'Parcelles cadastrales', description: 'APICarto IGN — cadastre', color: '#6a4c93', active: false, kind: 'zoom' },
     { id: 'gpu', group: 'Urbanisme et bâti', label: 'Zonage PLU', description: 'Géoportail de l’urbanisme — zones du document d’urbanisme', color: '#0d5c63', active: false, kind: 'zoom' },
     { id: 'sup', group: 'Urbanisme et bâti', label: 'Servitudes d’utilité publique', description: 'Géoportail de l’urbanisme — SUP', color: '#a15c9e', active: false, kind: 'zoom' },
+    { id: 'foncierPublic', group: 'Urbanisme et bâti', label: 'Foncier public', description: 'urbanisme95 · propriétaires publics par parcelle', color: '#000091', active: false, kind: 'zoom' },
+    { id: 'mos', group: 'Urbanisme et bâti', label: 'Mode d’occupation du sol (MOS)', description: 'Institut Paris Region · millésime 2025', color: '#62b467', active: false, kind: 'zoom' },
     { id: 'rpg', group: 'Agriculture', label: 'Parcelles agricoles (RPG)', description: 'Registre parcellaire graphique · APICarto IGN', color: '#8a9a3b', active: false, kind: 'zoom' },
     { id: 'ocsge', group: 'Artificialisation & ZAN', label: 'Occupation du sol (OCS GE)', description: 'IGN · artificialisation 2024-2026', color: '#c76524', active: false, kind: 'raster' },
     { id: 'znieff1', group: 'Biodiversité', label: 'ZNIEFF de type I', description: 'Secteurs de grand intérêt biologique · APICarto IGN', color: '#e4792f', active: false, kind: 'commune' },
@@ -659,6 +679,48 @@ async function loadSup() {
   } catch (error) { console.warn('SUP indisponible', error); }
 }
 
+let foncierPublicCache = null;
+async function loadFoncierPublic() {
+  const b = map.getBounds();
+  const geom = bboxGeom(b);
+  try {
+    foncierPublicCache = foncierPublicCache || fetch(CFG.foncierPublicFile).then(r => r.json());
+    const [publicData, response] = await Promise.all([
+      foncierPublicCache,
+      fetch(`${CFG.cadastreApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json()).catch(() => fetch(CFG.cadastreApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.json()))
+    ]);
+    const features = (response?.features || []).filter(f => publicData[f.properties?.idu || f.id]);
+    if (state.layers.foncierPublic) map.removeLayer(state.layers.foncierPublic);
+    state.layers.foncierPublic = L.geoJSON(features, {
+      style: f => { const info = publicData[f.properties?.idu || f.id]; const color = PUBLIC_LAND_COLORS[info?.[0]] || '#687787'; return { color, weight: 2, opacity: 1, fillColor: color, fillOpacity: 0.5 }; },
+      onEachFeature: (f, layer) => { const info = publicData[f.properties?.idu || f.id]; layer.bindTooltip(`<strong>${escapeHtml(info?.[2] || 'Propriétaire public')}</strong><br>${escapeHtml(info?.[1] || '')}`, { sticky: true }); }
+    });
+    if (state.layerDefs.find(l => l.id === 'foncierPublic')?.active) state.layers.foncierPublic.addTo(map);
+  } catch (error) { console.warn('Foncier public indisponible', error); }
+}
+
+async function loadMos() {
+  const b = map.getBounds();
+  const geometry = JSON.stringify({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth(), spatialReference: { wkid: 4326 } });
+  try {
+    const url = new URL(CFG.mosApi);
+    url.searchParams.set('f', 'geojson');
+    url.searchParams.set('geometry', geometry);
+    url.searchParams.set('geometryType', 'esriGeometryEnvelope');
+    url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
+    url.searchParams.set('outFields', '*');
+    url.searchParams.set('inSR', '4326');
+    url.searchParams.set('outSR', '4326');
+    const data = await fetch(url).then(r => r.json());
+    if (state.layers.mos) map.removeLayer(state.layers.mos);
+    state.layers.mos = L.geoJSON(data, {
+      style: f => { const code = f.properties?.mos2025; const color = mosColor(code); return { color, weight: 0.5, opacity: 0.6, fillColor: color, fillOpacity: 0.55 }; },
+      onEachFeature: (f, layer) => layer.bindTooltip(MOS_LABELS[f.properties?.mos2025] || 'Occupation du sol', { sticky: true })
+    });
+    if (state.layerDefs.find(l => l.id === 'mos')?.active) state.layers.mos.addTo(map);
+  } catch (error) { console.warn('MOS indisponible', error); }
+}
+
 let mobilityCache = null;
 function buildBusLignes() {
   if (!state.contour) return Promise.resolve(null);
@@ -713,6 +775,8 @@ function refreshDetailLayers() {
   if (state.layerDefs.find(l => l.id === 'rpg')?.active) loadRpg();
   if (state.layerDefs.find(l => l.id === 'gpu')?.active) loadGpu();
   if (state.layerDefs.find(l => l.id === 'sup')?.active) loadSup();
+  if (state.layerDefs.find(l => l.id === 'foncierPublic')?.active) loadFoncierPublic();
+  if (state.layerDefs.find(l => l.id === 'mos')?.active) loadMos();
 }
 
 function updateZoomNotice() {
@@ -875,7 +939,7 @@ function toggleLayer(id) {
   if (def.active) {
     if (layer) layer.addTo(map);
     if (def.kind === 'zoom' && map.getZoom() >= CFG.zoomGated) {
-      if (id === 'batiments') loadBatiments(); else if (id === 'cadastre') loadCadastre(); else if (id === 'rpg') loadRpg(); else if (id === 'gpu') loadGpu(); else if (id === 'sup') loadSup();
+      if (id === 'batiments') loadBatiments(); else if (id === 'cadastre') loadCadastre(); else if (id === 'rpg') loadRpg(); else if (id === 'gpu') loadGpu(); else if (id === 'sup') loadSup(); else if (id === 'foncierPublic') loadFoncierPublic(); else if (id === 'mos') loadMos();
     }
   } else if (layer) {
     map.removeLayer(layer);
