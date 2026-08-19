@@ -30,6 +30,7 @@ const CFG = {
   bdnbApi: 'https://api.bdnb.io/v1/bdnb',
   eauCoursEau: 'https://ddt95.github.io/eau95/data/processed/cours_eau.geojson',
   eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
+  roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
   qpvFile: 'data/qpv_95.geojson',
   elusFile: 'data/elus_95.json',
   finessFile: 'data/finess_95.json',
@@ -293,6 +294,7 @@ function setupDynamicLayers() {
     { id: 'jardins', group: 'Biodiversité', label: 'Jardins remarquables', description: 'Ministère de la Culture · Région Île-de-France', color: '#95c11f', active: false, kind: 'commune' },
     { id: 'busIdfm', group: 'Transports', label: 'Arrêts de bus', description: 'Île-de-France Mobilités', color: '#0063cb', active: false, kind: 'commune' },
     { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#000091', active: true, kind: 'commune' },
+    { id: 'routes', group: 'Transports', label: 'Routes principales', description: 'DDT 95 · réseau routier', color: '#68737d', active: false, kind: 'commune' },
     { id: 'inondation', group: 'Risques naturels', label: 'Zonage inondation (PPRI)', description: 'Géorisques · plans de prévention approuvés', color: '#1479c9', active: false, kind: 'wms', wms: 'PPRN_ZONE_INOND' },
     { id: 'mvt', group: 'Risques naturels', label: 'Mouvement de terrain (PPRN)', description: 'Géorisques · plans de prévention approuvés', color: '#7a4a1e', active: false, kind: 'wms', wms: 'PPRN_ZONE_MVT' },
     { id: 'argiles', group: 'Risques naturels', label: 'Retrait-gonflement des argiles', description: 'Géorisques · aléa cartographié', color: '#e76f00', active: false, kind: 'wms', wms: 'ALEARG_REALISE' }
@@ -312,6 +314,7 @@ function setupDynamicLayers() {
   buildCommuneLayer('jardins', buildJardins);
   buildCommuneLayer('busIdfm', () => buildIdfmArrets('busIdfm', 'bus'));
   buildCommuneLayer('railIdfm', () => buildIdfmArrets('railIdfm', ['rail', 'tram']));
+  buildCommuneLayer('routes', buildRoutes);
   buildWmsLayers();
 
   map.off('moveend', refreshDetailLayers);
@@ -433,6 +436,21 @@ function buildJardins() {
       return L.marker([r.latitude, r.longitude], { icon }).bindPopup(`<strong>${escapeHtml(r.nom_du_jardin)}</strong><br>${escapeHtml(r.adresse_complete || '')}`);
     }));
   });
+}
+
+let roadsCache = null;
+function buildRoutes() {
+  if (!state.contour) return Promise.resolve(null);
+  const loadRoads = roadsCache || fetch(CFG.roadsFile).then(r => r.text()).then(t => JSON.parse(t.slice(t.indexOf('{'))));
+  roadsCache = loadRoads;
+  return loadRoads.then(fc => {
+    const features = (fc.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
+    if (!features.length) return null;
+    return L.geoJSON({ type: 'FeatureCollection', features }, {
+      style: f => ({ color: '#68737d', weight: f.properties?.classement === 'Départementale' ? 2.5 : 1.5, opacity: 0.8 }),
+      onEachFeature: (f, layer) => layer.bindTooltip(`${f.properties?.numero || ''} ${f.properties?.toponyme || ''}`.trim() || 'Route', { sticky: true })
+    });
+  }).catch(() => null);
 }
 
 function buildIdfmArrets(id, types) {
