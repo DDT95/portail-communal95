@@ -518,6 +518,7 @@ async function loadBatiments() {
     if (state.layers.batiments) map.removeLayer(state.layers.batiments);
     state.layers.batiments = L.geoJSON({ type: 'FeatureCollection', features: all }, {
       style: { color: '#18753c', weight: 1, opacity: 0.9, fillColor: '#18753c', fillOpacity: 0.35 },
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 5, color: '#18753c', weight: 1, fillColor: '#18753c', fillOpacity: 0.7 }),
       onEachFeature: (f, layer) => layer.on('click', e => { L.DomEvent.stopPropagation(e); openBuildingDrawer(f); })
     });
     if (state.layerDefs.find(l => l.id === 'batiments')?.active) state.layers.batiments.addTo(map);
