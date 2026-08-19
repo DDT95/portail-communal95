@@ -31,6 +31,7 @@ const CFG = {
   eauCoursEau: 'https://ddt95.github.io/eau95/data/processed/cours_eau.geojson',
   eauStations: 'https://ddt95.github.io/eau95/data/processed/stations.geojson',
   roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
+  mobilityFile: 'https://ddt95.github.io/transport95/mobility95.js',
   cycleFile: 'https://ddt95.github.io/transport95/cycle95.js',
   icpeApi: 'https://www.georisques.gouv.fr/api/v1/installations_classees',
   sspApi: 'https://www.georisques.gouv.fr/api/v1/ssp',
@@ -322,8 +323,9 @@ function setupDynamicLayers() {
     { id: 'rnn', group: 'Biodiversité', label: 'Réserves naturelles', description: 'Réserves naturelles nationales · APICarto IGN', color: '#006a6f', active: false, kind: 'commune' },
     { id: 'foretsPubliques', group: 'Biodiversité', label: 'Forêts publiques', description: 'IGN BD TOPO · ONF', color: '#174f2d', active: false, kind: 'commune' },
     { id: 'jardins', group: 'Biodiversité', label: 'Jardins remarquables', description: 'Ministère de la Culture · Région Île-de-France', color: '#95c11f', active: false, kind: 'commune' },
+    { id: 'busLignes', group: 'Transports', label: 'Lignes de bus (tracés)', description: 'Île-de-France Mobilités · GTFS', color: '#e4794a', active: false, kind: 'commune' },
     { id: 'busIdfm', group: 'Transports', label: 'Arrêts de bus', description: 'Île-de-France Mobilités', color: '#0063cb', active: false, kind: 'commune' },
-    { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#000091', active: true, kind: 'commune' },
+    { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#7a1fa2', active: true, kind: 'commune' },
     { id: 'routes', group: 'Transports', label: 'Routes principales', description: 'DDT 95 · réseau routier', color: '#68737d', active: false, kind: 'commune' },
     { id: 'cyclable', group: 'Transports', label: 'Pistes cyclables', description: 'DDT 95 · itinéraires cyclables', color: '#18753c', active: false, kind: 'commune' },
     { id: 'inondation', group: 'Risques naturels', label: 'Zonage inondation (PPRI)', description: 'Géorisques · plans de prévention approuvés', color: '#1479c9', active: false, kind: 'wms', wms: 'PPRN_ZONE_INOND' },
@@ -345,6 +347,7 @@ function setupDynamicLayers() {
   buildCommuneLayer('rnn', () => buildNature('rnn', 'rnn'));
   buildCommuneLayer('foretsPubliques', buildForetsPubliques);
   buildCommuneLayer('jardins', buildJardins);
+  buildCommuneLayer('busLignes', buildBusLignes);
   buildCommuneLayer('busIdfm', () => buildIdfmArrets('busIdfm', 'bus'));
   buildCommuneLayer('railIdfm', () => buildIdfmArrets('railIdfm', ['rail', 'tram']));
   buildCommuneLayer('routes', buildRoutes);
@@ -475,10 +478,25 @@ function buildJardins() {
   });
 }
 
+function parseWindowJson(text) {
+  const start = text.indexOf('{');
+  let depth = 0, inString = false, escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return JSON.parse(text.slice(start, i + 1)); }
+  }
+  throw new Error('JSON introuvable');
+}
+
 let roadsCache = null;
 function buildRoutes() {
   if (!state.contour) return Promise.resolve(null);
-  const loadRoads = roadsCache || fetch(CFG.roadsFile).then(r => r.text()).then(t => JSON.parse(t.slice(t.indexOf('{'))));
+  const loadRoads = roadsCache || fetch(CFG.roadsFile).then(r => r.text()).then(parseWindowJson);
   roadsCache = loadRoads;
   return loadRoads.then(fc => {
     const features = (fc.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
@@ -493,7 +511,7 @@ function buildRoutes() {
 let cycleCache = null;
 function buildCyclable() {
   if (!state.contour) return Promise.resolve(null);
-  const loadCycle = cycleCache || fetch(CFG.cycleFile).then(r => r.text()).then(t => JSON.parse(t.slice(t.indexOf('{'))));
+  const loadCycle = cycleCache || fetch(CFG.cycleFile).then(r => r.text()).then(parseWindowJson);
   cycleCache = loadCycle;
   return loadCycle.then(fc => {
     const features = (fc.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
@@ -552,6 +570,26 @@ async function loadSup() {
     });
     if (state.layerDefs.find(l => l.id === 'sup')?.active) state.layers.sup.addTo(map);
   } catch (error) { console.warn('SUP indisponible', error); }
+}
+
+let mobilityCache = null;
+function buildBusLignes() {
+  if (!state.contour) return Promise.resolve(null);
+  const loadMobility = mobilityCache || fetch(CFG.mobilityFile).then(r => r.text()).then(parseWindowJson);
+  mobilityCache = loadMobility;
+  return loadMobility.then(d => {
+    const routes = d.routes || {};
+    const layers = [];
+    Object.values(routes).forEach(route => {
+      if (!route.geometry?.length) return;
+      const inside = route.geometry.some(([lat, lon]) => { try { return turf.booleanPointInPolygon(turf.point([lon, lat]), state.contour); } catch { return false; } });
+      if (!inside) return;
+      const color = '#' + (route.color || '0063cb');
+      const label = `${route.short || route.long || 'Ligne'}${route.long && route.short !== route.long ? ' · ' + route.long : ''}`;
+      layers.push(L.polyline(route.geometry, { color, weight: 3, opacity: 0.85 }).bindTooltip(label, { sticky: true }));
+    });
+    return layers.length ? L.layerGroup(layers) : null;
+  }).catch(() => null);
 }
 
 function buildIdfmArrets(id, types) {
