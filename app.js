@@ -41,6 +41,7 @@ const CFG = {
   qpvFile: 'data/qpv_95.geojson',
   elusFile: 'data/elus_95.json',
   finessFile: 'data/finess_95.json',
+  securiteFile: 'data/securite_95.json',
   pdfBase: 'https://piece-jointe-carto.developpement-durable.gouv.fr/DEPT095A/DONNEE_GENERIQUE/N_BASE_COMMUNALE/OCTE/Fiches',
   zoomGated: 13
 };
@@ -79,7 +80,7 @@ const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4'
 
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
-  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null,
+  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null, securite: null,
   layers: {}, layerDefs: [],
   drawerMode: 'commune'
 };
@@ -342,7 +343,7 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour), loadInsee(code)]);
+    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour), loadInsee(code), loadSecurite(code)]);
     loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
     setupDynamicLayers();
     renderControls();
@@ -411,6 +412,12 @@ let inseeProfilesCache = null;
 function loadInsee(code) {
   inseeProfilesCache = inseeProfilesCache || fetch(CFG.voInseeApi).then(r => r.json());
   return inseeProfilesCache.then(profiles => { state.insee = profiles[code] || null; }).catch(() => { state.insee = null; });
+}
+
+let securiteCache = null;
+function loadSecurite(code) {
+  securiteCache = securiteCache || fetch(CFG.securiteFile).then(r => r.json());
+  return securiteCache.then(all => { state.securite = all[code] || null; }).catch(() => { state.securite = null; });
 }
 
 async function loadMosSummary(contour) {
@@ -541,9 +548,20 @@ function renderFicheDrawer(open) {
     ['Quartiers prioritaires (QPV)', state.qpv.length ? state.qpv.length + ' quartier(s)' : 'Aucun QPV recensé'],
   ];
 
+  // ---- Sécurité (compétence police / gendarmerie) ----
+  const sec = state.securite;
+  const secRows = sec ? [
+    ['Force compétente', sec.institution === 'GN' ? 'Gendarmerie nationale' : 'Police nationale'],
+    ['Unité de secteur', sec.service],
+    ['Adresse', sec.adresse],
+    ['Téléphone', sec.telephone],
+    ['Horaires', sec.horaires ? sec.horaires.replace(/;\s*/g, ' · ') : null]
+  ].filter(([, v]) => v) : [];
+
   $('drawer-body').innerHTML = `
     <section class="result-section"><h3>Chiffres clés</h3><dl class="data-grid">${kpiRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>
     ${elusRows.length ? `<section class="result-section"><h3>Élus et gouvernance</h3><dl class="data-grid">${elusRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>` : ''}
+    ${secRows.length ? `<section class="result-section"><h3>Sécurité</h3><dl class="data-grid">${secRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${l === 'Téléphone' ? `<a href="tel:${escapeHtml(v.replace(/\s/g, ''))}">${escapeHtml(v)}</a>` : escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">SSMSI · OpenStreetMap — voir <a href="https://ddt95.github.io/val-doise-securite/" target="_blank" rel="noreferrer">Sécurité et prévention</a> pour la carte complète.</p></section>` : ''}
     ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Pyramide des âges</p>${ageDonut}` : ''}${transportRows.length ? `<p class="fiche-subhead">Mode de transport domicile-travail</p>${barList(transportRows)}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
     ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}<p class="source-note">Insee · RPLS — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
     ${mosRows.length ? `<section class="result-section"><h3>Occupation du sol (MOS 2025)</h3>${mosSegs.length ? donutChart(mosSegs) : ''}<dl class="data-grid">${mosRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Institut Paris Region — millésime 2025 · estimation sur l’emprise communale.</p></section>` : ''}
