@@ -142,9 +142,13 @@ function updateCompareBar() {
   bar.hidden = n === 0;
   text.textContent = n === 0 ? '' : `${n} commune${n > 1 ? 's' : ''} sélectionnée${n > 1 ? 's' : ''} sur 3`;
   openBtn.disabled = n < 2;
+  const listClear = $('compareClearList');
+  if (listClear) listClear.hidden = n === 0;
 }
 $('compareOpen')?.addEventListener('click', openCompareDialog);
-$('compareClear')?.addEventListener('click', () => { compareSelection.clear(); refreshCommuneList(); updateCompareBar(); });
+function clearCompareSelection() { compareSelection.clear(); refreshCommuneList(); updateCompareBar(); }
+$('compareClear')?.addEventListener('click', clearCompareSelection);
+$('compareClearList')?.addEventListener('click', clearCompareSelection);
 $('closeCompare')?.addEventListener('click', () => $('compareDialog').close());
 $('compareDialog')?.addEventListener('click', e => { if (e.target === $('compareDialog')) $('compareDialog').close(); });
 
@@ -235,26 +239,46 @@ function renderCompareColumn(code, nom, profile) {
   </div>`;
 }
 
+const SORT_FNS = {
+  nom: (a, b) => a.nom.localeCompare(b.nom, 'fr'),
+  pop_desc: (a, b) => (b.population || 0) - (a.population || 0),
+  pop_asc: (a, b) => (a.population || 0) - (b.population || 0),
+  surf_desc: (a, b) => (b.surface || 0) - (a.surface || 0),
+  surf_asc: (a, b) => (a.surface || 0) - (b.surface || 0)
+};
+
 function buildLandingMap() {
   map.dragging.disable(); map.scrollWheelZoom.disable(); map.doubleClickZoom.disable();
   $('layers-title').textContent = 'Communes du Val-d’Oise';
-  $('hide-all').textContent = 'Trier par population';
-  let sortByPop = false;
+  $('hide-all').hidden = true;
+  $('communeFilters').hidden = false;
   let communesData = [];
 
-  fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,population`).then(r => r.json()).then(list => {
+  fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,population,surface`).then(r => r.json()).then(list => {
     communesData = list;
     renderCommuneList();
   });
   refreshCommuneList = () => renderCommuneList();
 
   function renderCommuneList() {
-    const sorted = [...communesData].sort((a, b) => sortByPop ? (b.population || 0) - (a.population || 0) : a.nom.localeCompare(b.nom, 'fr'));
-    $('layer-list').innerHTML = sorted.map(c => {
+    const sortKey = $('communeSort').value;
+    const popMin = parseFloat($('popMin').value), popMax = parseFloat($('popMax').value);
+    const surfMin = parseFloat($('surfMin').value), surfMax = parseFloat($('surfMax').value);
+    const filtered = communesData.filter(c => {
+      const surfKm2 = c.surface ? c.surface / 100 : null;
+      if (!isNaN(popMin) && (c.population || 0) < popMin) return false;
+      if (!isNaN(popMax) && (c.population || 0) > popMax) return false;
+      if (!isNaN(surfMin) && (surfKm2 == null || surfKm2 < surfMin)) return false;
+      if (!isNaN(surfMax) && (surfKm2 == null || surfKm2 > surfMax)) return false;
+      return true;
+    });
+    const sorted = filtered.sort(SORT_FNS[sortKey] || SORT_FNS.nom);
+    $('layer-list').innerHTML = sorted.length ? sorted.map(c => {
       const checked = compareSelection.has(c.code);
       const disabled = !checked && compareSelection.size >= 3;
-      return `<div class="commune-row" style="${disabled ? 'opacity:.45' : ''}"><button class="switch" type="button" data-compare="${c.code}" data-nom="${escapeHtml(c.nom)}" aria-label="Sélectionner ${escapeHtml(c.nom)} pour comparer" aria-pressed="${checked}" ${disabled ? 'disabled' : ''}></button><div class="commune-row-body" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}</span></div></div>`;
-    }).join('');
+      const surfLabel = c.surface ? `${formatNumber(Math.round(c.surface / 100) / 10)} km²` : null;
+      return `<div class="commune-row" style="${disabled ? 'opacity:.45' : ''}"><button class="switch" type="button" data-compare="${c.code}" data-nom="${escapeHtml(c.nom)}" aria-label="Sélectionner ${escapeHtml(c.nom)} pour comparer" aria-pressed="${checked}" ${disabled ? 'disabled' : ''}></button><div class="commune-row-body" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}${surfLabel ? ' · ' + surfLabel : ''}</span></div></div>`;
+    }).join('') : '<p class="source-note">Aucune commune ne correspond à ces filtres.</p>';
     $('layer-list').querySelectorAll('.commune-row-body').forEach(row => row.addEventListener('click', () => goToCommune(row.dataset.code, row.dataset.nom)));
     $('layer-list').querySelectorAll('[data-compare]').forEach(btn => btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -265,12 +289,13 @@ function buildLandingMap() {
       updateCompareBar();
     }));
   }
-  $('hide-all').onclick = () => { sortByPop = !sortByPop; $('hide-all').textContent = sortByPop ? 'Trier par nom' : 'Trier par population'; renderCommuneList(); };
+  $('communeSort').addEventListener('change', renderCommuneList);
+  ['popMin', 'popMax', 'surfMin', 'surfMax'].forEach(id => $(id).addEventListener('input', renderCommuneList));
   updateCompareBar();
 
   fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
     const layer = L.geoJSON(fc, {
-      style: { color: '#71839d', weight: 0.8, opacity: 0.75, fillColor: '#f4f7fb', fillOpacity: 0.5 },
+      style: { color: '#000091', weight: 1.2, opacity: 0.55, fillColor: '#e8eaf7', fillOpacity: 0.75 },
       onEachFeature: (f, l) => {
         l.bindTooltip(f.properties.nom, { sticky: true, direction: 'top' });
         l.on({

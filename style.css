@@ -30,6 +30,7 @@ body.print-mode .print-sheet{display:block;max-width:800px;margin:0 auto;padding
 #mobile-panel{display:none}
 .layers{display:flex;flex:1;min-height:0;flex-direction:column}
 .section-title{margin-top:4px;padding:13px 8px;border-bottom:1px solid #e4e4eb}
+.section-title-actions{display:flex;gap:12px;align-items:center}
 #layer-list{flex:1;min-height:0;overflow-y:auto;padding:8px 4px 18px;scrollbar-gutter:stable}
 .layer-row{grid-template-columns:34px 1fr 15px;min-height:58px;cursor:pointer}
 .layer-row:hover{background:var(--soft);border-color:#c9c9e8}
@@ -113,3 +114,10 @@ body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%
 .compare-bar-track{height:8px;border-radius:6px;background:#eef0f7;overflow:hidden}
 .compare-bar-fill{height:100%;border-radius:6px;background:var(--blue)}
 @media(max-width:900px){.compare-body{grid-template-columns:1fr}}
+.commune-filters{display:flex;flex-direction:column;gap:8px;padding:10px 4px 14px}
+.commune-filters select{width:100%;border:1px solid #c7c9d5;border-radius:10px;padding:9px 10px;font-size:11px;font-weight:700;color:var(--blue);background:#fff}
+.commune-filter-row{display:flex;gap:8px}
+.commune-filter-row label{flex:1;font-size:9px;color:#777;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.commune-filter-row label>div{display:flex;align-items:center;gap:4px;margin-top:4px}
+.commune-filter-row input{width:0;flex:1;border:1px solid #c7c9d5;border-radius:8px;padding:7px 6px;font-size:11px;color:var(--ink)}
+.commune-filter-row span{color:#aaa;font-size:10px}
