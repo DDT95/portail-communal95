@@ -68,6 +68,7 @@ const state = {
   drawerMode: 'commune'
 };
 const compareSelection = new Map();
+let refreshCommuneList = () => {};
 
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? '—').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c));
@@ -127,6 +128,7 @@ function updateCompareBar() {
   openBtn.disabled = n < 2;
 }
 $('compareOpen')?.addEventListener('click', openCompareDialog);
+$('compareClear')?.addEventListener('click', () => { compareSelection.clear(); refreshCommuneList(); updateCompareBar(); });
 $('closeCompare')?.addEventListener('click', () => $('compareDialog').close());
 $('compareDialog')?.addEventListener('click', e => { if (e.target === $('compareDialog')) $('compareDialog').close(); });
 
@@ -146,7 +148,7 @@ async function openCompareDialog() {
 function donutChart(segments) {
   let cum = 0;
   const stops = segments.map(s => { const start = cum; cum += s.pct; return `${s.color} ${start}% ${cum}%`; }).join(',');
-  const legend = segments.map(s => `<div class="donut-legend-row"><i style="background:${s.color}"></i><span>${escapeHtml(s.label)}</span><b>${s.pct.toFixed(1)}%</b></div>`).join('');
+  const legend = segments.map(s => `<div class="donut-legend-row"><i style="background:${s.color}"></i><span>${escapeHtml(s.label)}${s.count != null ? ' · ' + formatNumber(Math.round(s.count)) : ''}</span><b>${s.pct.toFixed(1)}%</b></div>`).join('');
   return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(${stops})"></div><div class="donut-legend">${legend}</div></div>`;
 }
 function barList(rows) {
@@ -183,17 +185,17 @@ function renderCompareColumn(code, nom, profile) {
     ['Emplois salariés', eco.emplois_salaries?.value ? formatNumber(Math.round(eco.emplois_salaries.value)) : null]
   ].filter(([, v]) => v);
 
-  const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
+  const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
 
   const occSegs = [
-    proprietaires != null ? { label: 'Propriétaires', pct: pctOf(proprietaires, rp), color: '#18753c' } : null,
-    locPrive != null ? { label: 'Locataires (privé)', pct: pctOf(locPrive, rp), color: '#0063cb' } : null,
-    locSocial != null ? { label: 'Locataires (social)', pct: pctOf(locSocial, rp), color: '#6a4c93' } : null
+    proprietaires != null ? { label: 'Propriétaires', pct: pctOf(proprietaires, rp), count: proprietaires, color: '#18753c' } : null,
+    locPrive != null ? { label: 'Locataires (privé)', pct: pctOf(locPrive, rp), count: locPrive, color: '#0063cb' } : null,
+    locSocial != null ? { label: 'Locataires (social)', pct: pctOf(locSocial, rp), count: locSocial, color: '#6a4c93' } : null
   ].filter(Boolean);
   const occDonut = occSegs.length ? donutChart(occSegs) : '';
 
   const famColors = ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'];
-  const famDonut = familles.length ? donutChart(familles.map((f, i) => ({ label: f.label, pct: f.pct, color: famColors[i] || '#0d5c63' }))) : '';
+  const famDonut = familles.length ? donutChart(familles.map((f, i) => ({ label: f.label, pct: f.pct, count: f.value, color: famColors[i] || '#0d5c63' }))) : '';
 
   const parcRows = [
     ['Maisons', pctOf(parc.maisons?.value, parc.residences_principales?.value), '#18753c'],
@@ -228,6 +230,7 @@ function buildLandingMap() {
     communesData = list;
     renderCommuneList();
   });
+  refreshCommuneList = () => renderCommuneList();
 
   function renderCommuneList() {
     const sorted = [...communesData].sort((a, b) => sortByPop ? (b.population || 0) - (a.population || 0) : a.nom.localeCompare(b.nom, 'fr'));
@@ -268,6 +271,7 @@ function buildLandingMap() {
 async function loadCommune(code, nomHint) {
   state.code = code;
   setLoading(true, 'Chargement du territoire');
+  $('compareBar').hidden = true;
   try {
     const commune = await fetch(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
     if (!commune.nom) throw new Error('Commune introuvable');
