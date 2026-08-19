@@ -86,7 +86,16 @@ body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%
 .compare-dialog{width:min(1000px,calc(100% - 32px));max-height:88vh;overflow:auto}
 .compare-body{display:grid;gap:14px;margin-top:18px;grid-template-columns:repeat(var(--cols,2),1fr)}
 .compare-col{border:1px solid #e1e1eb;border-radius:16px;padding:16px;min-width:0}
-.compare-col h3{margin:0 0 12px;font-size:16px;color:#0d0d45}
+.compare-dialog{width:min(1200px,calc(100% - 32px))}
+.compare-col{background:#fbfbfe}
+.compare-col h3{margin:0 0 14px;font-size:24px;font-weight:800;color:#0d0d45;letter-spacing:-.02em;padding-bottom:10px;border-bottom:2px solid #000091}
+.donut-wrap{display:flex;align-items:center;gap:14px}
+.donut{width:84px;height:84px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 22px #fff, 0 0 0 1px #eee}
+.donut-legend{display:flex;flex-direction:column;gap:5px;min-width:0}
+.donut-legend-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#444}
+.donut-legend-row i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.donut-legend-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.donut-legend-row b{color:#10104b}
 .compare-block{margin-bottom:16px}
 .compare-block h4{margin:0 0 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
 .compare-stat{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-top:1px solid #eee}

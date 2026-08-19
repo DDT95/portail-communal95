@@ -143,39 +143,77 @@ async function openCompareDialog() {
   }
 }
 
+function donutChart(segments) {
+  let cum = 0;
+  const stops = segments.map(s => { const start = cum; cum += s.pct; return `${s.color} ${start}% ${cum}%`; }).join(',');
+  const legend = segments.map(s => `<div class="donut-legend-row"><i style="background:${s.color}"></i><span>${escapeHtml(s.label)}</span><b>${s.pct.toFixed(1)}%</b></div>`).join('');
+  return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(${stops})"></div><div class="donut-legend">${legend}</div></div>`;
+}
+function barList(rows) {
+  return `<div class="compare-bars">${rows.map(([label, pct, color]) => `<div class="compare-bar-row"><div><span>${escapeHtml(label)}</span><span>${pct.toFixed(1)}%</span></div><div class="compare-bar-track"><div class="compare-bar-fill" style="width:${pct}%;background:${color}"></div></div></div>`).join('')}</div>`;
+}
+
 function renderCompareColumn(code, nom, profile) {
   if (!profile) return `<div class="compare-col"><h3>${escapeHtml(nom)}</h3><p class="source-note">Aucune donnée Insee disponible.</p></div>`;
   const t = profile.themes || {};
   const pop = t.habitants?.population_totale?.value;
   const pyramide = t.habitants?.pyramide_ages?.tranches || [];
   const chomage = t.emploi_mobilites?.chomage_rp?.taux_chomage_15_64?.value;
+  const revenus = t.habitants?.revenus_pauvrete || {};
   const occ = t.logement?.occupation || {};
   const rp = occ.proprietaires?.denominator || null;
   const proprietaires = occ.proprietaires?.value, locPrive = occ.locataires_prive?.value, locSocial = occ.locataires_social?.value;
   const partSocial = t.logement?.social?.part_rpls_residences_principales?.value;
-  const pctOf = (v, d) => v != null && d ? Math.round((v / d) * 100) : null;
+  const parc = t.logement?.parc || {};
+  const vacance = t.logement?.vacance?.taux_vacance_rp?.value;
+  const familles = t.habitants?.structure_familles?.repartition || [];
+  const diplomes = t.habitants?.diplomes?.repartition || [];
+  const transport = t.emploi_mobilites?.transport || [];
+  const eco = t.economie_equipements?.entreprises || {};
+  const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
 
   const kpiRows = [
     ['Population', pop ? formatNumber(Math.round(pop)) + ' hab.' : null],
+    ['Niveau de vie médian', revenus.niveau_vie_median?.value ? formatNumber(revenus.niveau_vie_median.value) + ' €/an' : null],
+    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null],
     ['Taux de chômage (15-64 ans)', chomage != null ? chomage.toFixed(1) + ' %' : null],
-    ['Logement social', partSocial != null ? partSocial.toFixed(1) + ' %' : null]
+    ['Logement social', partSocial != null ? partSocial.toFixed(1) + ' %' : null],
+    ['Logements vacants', vacance != null ? vacance.toFixed(1) + ' %' : null],
+    ['Établissements actifs', eco.etablissements_actifs?.value ? formatNumber(Math.round(eco.etablissements_actifs.value)) : null],
+    ['Emplois salariés', eco.emplois_salaries?.value ? formatNumber(Math.round(eco.emplois_salaries.value)) : null]
   ].filter(([, v]) => v);
 
-  const ageBars = pyramide.map(tr => `<div class="compare-bar-row"><div><span>${escapeHtml(tr.label)}</span><span>${tr.pct}%</span></div><div class="compare-bar-track"><div class="compare-bar-fill" style="width:${tr.pct}%;background:#c76524"></div></div></div>`).join('');
+  const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
 
-  const occRows = [
-    ['Propriétaires', pctOf(proprietaires, rp), '#18753c'],
-    ['Locataires (privé)', pctOf(locPrive, rp), '#0063cb'],
-    ['Locataires (social)', pctOf(locSocial, rp), '#6a4c93']
+  const occSegs = [
+    proprietaires != null ? { label: 'Propriétaires', pct: pctOf(proprietaires, rp), color: '#18753c' } : null,
+    locPrive != null ? { label: 'Locataires (privé)', pct: pctOf(locPrive, rp), color: '#0063cb' } : null,
+    locSocial != null ? { label: 'Locataires (social)', pct: pctOf(locSocial, rp), color: '#6a4c93' } : null
+  ].filter(Boolean);
+  const occDonut = occSegs.length ? donutChart(occSegs) : '';
+
+  const famColors = ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'];
+  const famDonut = familles.length ? donutChart(familles.map((f, i) => ({ label: f.label, pct: f.pct, color: famColors[i] || '#0d5c63' }))) : '';
+
+  const parcRows = [
+    ['Maisons', pctOf(parc.maisons?.value, parc.residences_principales?.value), '#18753c'],
+    ['Appartements', pctOf(parc.appartements?.value, parc.residences_principales?.value), '#6a4c93']
   ].filter(([, pct]) => pct != null);
-  const occBars = occRows.map(([label, pct, color]) => `<div class="compare-bar-row"><div><span>${escapeHtml(label)}</span><span>${pct}%</span></div><div class="compare-bar-track"><div class="compare-bar-fill" style="width:${pct}%;background:${color}"></div></div></div>`).join('');
+
+  const diplomeRows = diplomes.map((d, i) => [d.label, d.pct, ['#000091', '#3153a4', '#5a75c4', '#8296d6', '#a9b7e6', '#d0d8f2'][i] || '#000091']);
+  const transportSorted = [...transport].sort((a, b) => b.pct - a.pct).slice(0, 5);
+  const transportRows = transportSorted.map((tr, i) => [tr.label, tr.pct, ['#c76524', '#d68a4f', '#e4a86a', '#efc38f', '#f7ddb8'][i] || '#c76524']);
 
   return `<div class="compare-col">
     <h3>${escapeHtml(nom)}</h3>
     ${kpiRows.length ? `<div class="compare-block"><h4>Chiffres clés</h4>${kpiRows.map(([l, v]) => `<div class="compare-stat"><span>${escapeHtml(l)}</span><strong>${escapeHtml(v)}</strong></div>`).join('')}</div>` : ''}
-    ${ageBars ? `<div class="compare-block"><h4>Pyramide des âges</h4><div class="compare-bars">${ageBars}</div></div>` : ''}
-    ${occBars ? `<div class="compare-block"><h4>Statut d’occupation des logements</h4><div class="compare-bars">${occBars}</div></div>` : ''}
-    <p class="source-note">Insee · RP2023, Filosofi — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p>
+    ${ageDonut ? `<div class="compare-block"><h4>Pyramide des âges</h4>${ageDonut}</div>` : ''}
+    ${occDonut ? `<div class="compare-block"><h4>Statut d’occupation des logements</h4>${occDonut}</div>` : ''}
+    ${parcRows.length ? `<div class="compare-block"><h4>Type de logement</h4>${barList(parcRows)}</div>` : ''}
+    ${famDonut ? `<div class="compare-block"><h4>Structure des familles</h4>${famDonut}</div>` : ''}
+    ${diplomeRows.length ? `<div class="compare-block"><h4>Diplômes (actifs occupés)</h4>${barList(diplomeRows)}</div>` : ''}
+    ${transportRows.length ? `<div class="compare-block"><h4>Mode de transport domicile-travail</h4>${barList(transportRows)}</div>` : ''}
+    <p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p>
   </div>`;
 }
 
