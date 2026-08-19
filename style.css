@@ -36,15 +36,14 @@
 a.brand{text-decoration:none;color:inherit;cursor:pointer}
 .header-actions{display:flex;align-items:center;gap:10px}
 #openExport{border:1px solid var(--blue);background:var(--blue);color:#fff}
-.territory{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:9px}
-.territory strong{display:block;font-size:15px;color:var(--blue);margin-bottom:2px}
-#pdfLink{background:#fff;color:var(--blue);border:1px solid #c7c9d5}
-.elus-block,.risques-block{margin-bottom:6px}
-.elus-block .data-grid>div,.risques-block .data-grid>div{padding:7px 0}
+.risque-pills{display:flex;flex-wrap:wrap;gap:0}
 .risque-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;margin:0 6px 6px 0;border-radius:20px;background:#fff4ef;border:1px solid #f0c9b3;font-size:10px;color:#8a3a12;font-weight:700}
 .risque-pill.none{background:var(--soft);border-color:#d8d8ef;color:#3a3a6b}
-.school-marker{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#c76524;color:#fff;font-size:11px;font-weight:800;box-shadow:0 2px 8px #0004;border:2px solid #fff}
-.school-marker.priv{background:#6a4c93}
+.theme-marker{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;color:#fff;font-size:11px;font-weight:800;box-shadow:0 2px 8px #0004;border:2px solid #fff}
+.theme-marker.school{background:#c76524}
+.theme-marker.school.alt{background:#6a4c93}
+.theme-marker.gare{background:#0063cb}
+.theme-marker.bus{background:#0063cb;width:20px;height:20px;font-size:10px}
 .export-dialog{width:min(650px,calc(100% - 32px));border:0;border-radius:24px;padding:30px;box-shadow:0 30px 90px #0005}
 .export-dialog::backdrop{background:#070047bb;backdrop-filter:blur(4px)}
 .export-dialog>small{color:var(--blue);font-size:9px;letter-spacing:.12em;font-weight:700}
@@ -58,5 +57,5 @@ a.brand{text-decoration:none;color:inherit;cursor:pointer}
 .export-choices b{color:var(--blue);font-size:13px}
 .export-choices span{margin-top:6px;color:#666;font-size:9px;line-height:1.5}
 body.exporting .left-panel,body.exporting .legend,body.exporting .map-note,body.exporting footer,body.exporting .header-actions{visibility:hidden}
-@media(max-width:900px){.territory{grid-template-columns:repeat(2,1fr)}}
+body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%;height:auto}
 @media print{.export-dialog{display:none}}

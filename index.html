@@ -8,7 +8,7 @@
   <title>Portail communal · Val-d’Oise</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <a class="skip-link" href="#map">Aller à la carte</a>
@@ -39,25 +39,7 @@
           <datalist id="communes-list"></datalist>
         </form>
 
-        <div class="main-actions"><button id="pdfLink" type="button" hidden>Fiche officielle PDF (OCTE)</button><button id="mobile-panel" type="button" aria-expanded="false">Afficher les couches</button></div>
-
-        <div class="territory" id="kpiStrip" hidden>
-          <span><strong id="kpiPopulation">—</strong><br>habitants</span>
-          <span><strong id="kpiSurface">—</strong><br>superficie</span>
-          <span><strong id="kpiEpci">—</strong><br>intercommunalité</span>
-          <span><strong id="kpiCode">—</strong><br>code INSEE</span>
-        </div>
-
-        <section class="reading elus-block" id="elusBlock" hidden>
-          <b>Élus et gouvernance</b>
-          <div id="elusRows" class="data-grid"></div>
-        </section>
-
-        <section class="reading risques-block" id="risquesBlock" hidden>
-          <b>Risques majeurs recensés</b>
-          <div id="risquesRows"></div>
-          <p class="source-note">Géorisques · GASPAR — consulter <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noreferrer">georisques.gouv.fr</a> pour le détail réglementaire.</p>
-        </section>
+        <div class="main-actions"><button id="showFiche" type="button" hidden>Voir la fiche commune</button><button id="mobile-panel" type="button" aria-expanded="false">Afficher les couches</button></div>
 
         <section class="layers" aria-labelledby="layers-title">
           <div class="section-title"><h2 id="layers-title">Couches de la carte</h2><button id="hide-all" type="button">Tout masquer</button></div>
@@ -80,9 +62,9 @@
 
 <aside class="drawer" id="drawer" aria-labelledby="drawer-title" aria-hidden="true">
   <button class="drawer-close" id="drawer-close" type="button" aria-label="Fermer la fiche">×</button>
-  <div class="drawer-head"><p>FICHE BÂTIMENT</p><h2 id="drawer-title">Aucune sélection</h2><span id="drawer-sub">Cliquez sur un bâtiment</span></div>
+  <div class="drawer-head"><p id="drawer-kicker">FICHE COMMUNALE</p><h2 id="drawer-title">Aucune sélection</h2><span id="drawer-sub">Choisissez une commune</span></div>
   <div class="drawer-body" id="drawer-body"></div>
-  <div class="drawer-actions"><a id="drawer-source" href="https://rnb.beta.gouv.fr/" target="_blank" rel="noopener">Référentiel National des Bâtiments ↗</a></div>
+  <div class="drawer-actions" id="drawer-actions"></div>
 </aside>
 
 <dialog id="exportDialog" class="export-dialog">
@@ -101,6 +83,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
