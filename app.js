@@ -79,7 +79,7 @@ const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4'
 
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
-  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [],
+  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null,
   layers: {}, layerDefs: [],
   drawerMode: 'commune'
 };
@@ -340,7 +340,8 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour)]);
+    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour), loadInsee(code)]);
+    loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
     setupDynamicLayers();
     renderControls();
     renderFicheDrawer(true);
@@ -404,6 +405,47 @@ function loadFiness(contour) {
   }).catch(() => { state.finess = []; });
 }
 
+let inseeProfilesCache = null;
+function loadInsee(code) {
+  inseeProfilesCache = inseeProfilesCache || fetch(CFG.voInseeApi).then(r => r.json());
+  return inseeProfilesCache.then(profiles => { state.insee = profiles[code] || null; }).catch(() => { state.insee = null; });
+}
+
+async function loadMosSummary(contour) {
+  if (!contour) return null;
+  const b = L.geoJSON(contour).getBounds();
+  const geometry = JSON.stringify({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth(), spatialReference: { wkid: 4326 } });
+  const contourFeature = { type: 'Feature', properties: {}, geometry: contour };
+  const groups = { naturel: 0, ouvert: 0, construit: 0 };
+  let total = 0;
+  try {
+    for (let offset = 0, page = 0; page < 12; page++) {
+      const url = new URL(CFG.mosApi);
+      url.searchParams.set('f', 'geojson');
+      url.searchParams.set('geometry', geometry);
+      url.searchParams.set('geometryType', 'esriGeometryEnvelope');
+      url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
+      url.searchParams.set('outFields', 'mos2025');
+      url.searchParams.set('inSR', '4326');
+      url.searchParams.set('outSR', '4326');
+      url.searchParams.set('resultOffset', String(offset));
+      const data = await fetch(url).then(r => r.json());
+      (data.features || []).forEach(f => {
+        let area = 0;
+        try { area = turf.area(turf.intersect(turf.featureCollection([f, contourFeature]))) || 0; } catch { area = 0; }
+        if (!area) return;
+        const code = f.properties?.mos2025;
+        total += area;
+        if (code <= 12) groups.naturel += area; else if (code <= 27) groups.ouvert += area; else groups.construit += area;
+      });
+      if (!data.exceededTransferLimit) break;
+      offset += (data.features || []).length || 1000;
+    }
+    state.mosSummary = total ? { total, ...groups } : null;
+  } catch { state.mosSummary = null; }
+  return state.mosSummary;
+}
+
 // ---------- Volet droit : fiche commune / fiche bâtiment ----------
 function renderFicheDrawer(open) {
   if (state.drawerMode === 'batiment' && !open) return;
@@ -438,11 +480,74 @@ function renderFicheDrawer(open) {
     state.energie ? [`Électricité résidentielle ${state.energie.annee}`, `${formatNumber(Math.round(state.energie.conso))} MWh · ${formatNumber(state.energie.sites)} sites`] : null
   ].filter(Boolean);
 
+  // ---- Démographie, économie et logement (Insee) ----
+  const t = state.insee?.themes || {};
+  const pop = t.habitants?.population_totale?.value;
+  const pyramide = t.habitants?.pyramide_ages?.tranches || [];
+  const chomage = t.emploi_mobilites?.chomage_rp?.taux_chomage_15_64?.value;
+  const revenus = t.habitants?.revenus_pauvrete || {};
+  const occ = t.logement?.occupation || {};
+  const rp = occ.proprietaires?.denominator || null;
+  const partSocial = t.logement?.social?.part_rpls_residences_principales?.value;
+  const parc = t.logement?.parc || {};
+  const vacance = t.logement?.vacance?.taux_vacance_rp?.value;
+  const eco = t.economie_equipements?.entreprises || {};
+  const transport = t.emploi_mobilites?.transport || [];
+  const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
+
+  const demoRows = [
+    ['Population (RP Insee)', pop ? formatNumber(Math.round(pop)) + ' hab.' : null],
+    ['Niveau de vie médian', revenus.niveau_vie_median?.value ? formatNumber(revenus.niveau_vie_median.value) + ' €/an' : null],
+    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null],
+    ['Taux de chômage (15-64 ans)', chomage != null ? chomage.toFixed(1) + ' %' : null],
+    ['Établissements actifs', eco.etablissements_actifs?.value ? formatNumber(Math.round(eco.etablissements_actifs.value)) : null],
+    ['Emplois salariés', eco.emplois_salaries?.value ? formatNumber(Math.round(eco.emplois_salaries.value)) : null]
+  ].filter(([, v]) => v);
+  const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
+  const transportRows = [...transport].sort((a, b) => b.pct - a.pct).slice(0, 5).map((tr, i) => [tr.label, tr.pct, ['#c76524', '#d68a4f', '#e4a86a', '#efc38f', '#f7ddb8'][i] || '#c76524']);
+
+  const occSegs = [
+    occ.proprietaires?.value != null ? { label: 'Propriétaires', pct: pctOf(occ.proprietaires.value, rp), count: occ.proprietaires.value, color: '#18753c' } : null,
+    occ.locataires_prive?.value != null ? { label: 'Locataires (privé)', pct: pctOf(occ.locataires_prive.value, rp), count: occ.locataires_prive.value, color: '#0063cb' } : null,
+    occ.locataires_social?.value != null ? { label: 'Locataires (social)', pct: pctOf(occ.locataires_social.value, rp), count: occ.locataires_social.value, color: '#6a4c93' } : null
+  ].filter(Boolean);
+  const occDonut = occSegs.length ? donutChart(occSegs) : '';
+  const logementRows = [
+    ['Résidences principales', rp ? formatNumber(Math.round(rp)) : null],
+    ['Part de logement social (RPLS)', partSocial != null ? partSocial.toFixed(1) + ' %' : null],
+    ['Logements vacants', vacance != null ? vacance.toFixed(1) + ' %' : null],
+    ['Maisons', parc.maisons?.value != null ? pctOf(parc.maisons.value, parc.residences_principales?.value)?.toFixed(1) + ' %' : null],
+    ['Appartements', parc.appartements?.value != null ? pctOf(parc.appartements.value, parc.residences_principales?.value)?.toFixed(1) + ' %' : null]
+  ].filter(([, v]) => v);
+
+  // ---- Occupation du sol (MOS 2025, IAU Île-de-France) ----
+  const mos = state.mosSummary;
+  const mosSegs = mos ? [
+    { label: 'Espaces construits', pct: mos.construit / mos.total * 100, color: '#a05a9c' },
+    { label: 'Espaces ouverts', pct: mos.ouvert / mos.total * 100, color: '#62b467' },
+    { label: 'Espaces agricoles, forestiers et naturels', pct: mos.naturel / mos.total * 100, color: '#18753c' }
+  ].filter(s => s.pct > 0) : [];
+  const mosRows = mos ? [
+    ['Superficie communale estimée', formatNumber(Math.round(mos.total / 10000 * 10) / 10) + ' ha'],
+    ['Espaces construits', formatNumber(Math.round(mos.construit / 10000 * 10) / 10) + ' ha · ' + (mos.construit / mos.total * 100).toFixed(1) + ' %'],
+    ['Espaces ouverts', formatNumber(Math.round(mos.ouvert / 10000 * 10) / 10) + ' ha · ' + (mos.ouvert / mos.total * 100).toFixed(1) + ' %'],
+    ['Espaces agricoles, forestiers et naturels', formatNumber(Math.round(mos.naturel / 10000 * 10) / 10) + ' ha · ' + (mos.naturel / mos.total * 100).toFixed(1) + ' %']
+  ] : [];
+
+  // ---- Politique de la ville et foncier ----
+  const villeRows = [
+    ['Quartiers prioritaires (QPV)', state.qpv.length ? state.qpv.length + ' quartier(s)' : 'Aucun QPV recensé'],
+  ];
+
   $('drawer-body').innerHTML = `
     <section class="result-section"><h3>Chiffres clés</h3><dl class="data-grid">${kpiRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>
     ${elusRows.length ? `<section class="result-section"><h3>Élus et gouvernance</h3><dl class="data-grid">${elusRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>` : ''}
+    ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Pyramide des âges</p>${ageDonut}` : ''}${transportRows.length ? `<p class="fiche-subhead">Mode de transport domicile-travail</p>${barList(transportRows)}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
+    ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}<p class="source-note">Insee · RPLS — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
+    ${mosRows.length ? `<section class="result-section"><h3>Occupation du sol (MOS 2025)</h3>${mosSegs.length ? donutChart(mosSegs) : ''}<dl class="data-grid">${mosRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Institut Paris Region — millésime 2025 · estimation sur l’emprise communale.</p></section>` : ''}
     <section class="result-section"><h3>Risques majeurs recensés</h3><div class="risque-pills">${risquesHtml}</div><p class="source-note">Géorisques · GASPAR — consulter <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noreferrer">georisques.gouv.fr</a> pour le détail réglementaire.</p></section>
     ${territoireRows.length ? `<section class="result-section"><h3>Artificialisation, eau et énergie</h3><dl class="data-grid">${territoireRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Cerema · Hub’Eau · Agence ORE — voir les lectures <a href="https://ddt95.github.io/artificialisation-zan95/" target="_blank" rel="noreferrer">ZAN</a>, <a href="https://ddt95.github.io/eau95/" target="_blank" rel="noreferrer">Eau</a> et <a href="https://ddt95.github.io/transition-energetique95/" target="_blank" rel="noreferrer">Transition énergétique</a> pour le détail.</p></section>` : ''}
+    <section class="result-section"><h3>Politique de la ville</h3><dl class="data-grid">${villeRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">ANCT — quartiers prioritaires de la politique de la ville.</p></section>
   `;
   $('drawer-actions').innerHTML = `<button id="drawer-pdf" type="button">Fiche officielle PDF (OCTE)</button>`;
   $('drawer-pdf').onclick = () => window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');

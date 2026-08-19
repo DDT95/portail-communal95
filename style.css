@@ -89,6 +89,8 @@ body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%
 .donut-legend-row i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .donut-legend-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .donut-legend-row b{color:#10104b}
+.fiche-subhead{margin:14px 0 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
+.result-section .donut-wrap{margin-bottom:6px}
 .compare-block{margin-bottom:16px}
 .compare-block h4{margin:0 0 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
 .compare-stat{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-top:1px solid #eee}
