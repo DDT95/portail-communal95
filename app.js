@@ -114,7 +114,7 @@ if (initialCode) {
   buildLandingMap();
 }
 
-function goToCommune(code, nom) { location.href = `?${new URLSearchParams({ code, nom })}`; }
+function goToCommune(code, nom) { window.open(`?${new URLSearchParams({ code, nom })}`, '_blank', 'noopener'); }
 
 function buildLandingMap() {
   map.dragging.disable(); map.scrollWheelZoom.disable(); map.doubleClickZoom.disable();
