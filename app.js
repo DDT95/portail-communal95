@@ -765,7 +765,7 @@ const ROAD_STYLES = {
   Départementale: { color: '#f2a900', weight: 2.2, opacity: 0.9 },
   Bretelle: { color: '#c1121f', weight: 1.8, opacity: 0.7 }
 };
-const ROAD_DEFAULT_STYLE = { color: '#9aa0a6', weight: 1, opacity: 0.55 };
+const ROAD_DEFAULT_STYLE = { color: '#3d434b', weight: 1.3, opacity: 0.8 };
 function roadStyle(f) { return ROAD_STYLES[f.properties?.classement] || ROAD_DEFAULT_STYLE; }
 function roadLabel(f) {
   const c = f.properties?.classement;
