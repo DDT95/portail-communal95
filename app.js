@@ -907,20 +907,31 @@ async function loadFoncierPublic() {
 }
 
 async function loadMos() {
-  const b = map.getBounds();
+  if (!state.contour) return;
+  // Utilise l’emprise de la commune, pas la fenêtre courante de la carte :
+  // celle-ci peut encore être en train de se recentrer sur la commune au
+  // moment de l’appel et renvoyait des données d’une zone sans rapport.
+  const b = L.geoJSON(state.contour).getBounds();
   const geometry = JSON.stringify({ xmin: b.getWest(), ymin: b.getSouth(), xmax: b.getEast(), ymax: b.getNorth(), spatialReference: { wkid: 4326 } });
   try {
-    const url = new URL(CFG.mosApi);
-    url.searchParams.set('f', 'geojson');
-    url.searchParams.set('geometry', geometry);
-    url.searchParams.set('geometryType', 'esriGeometryEnvelope');
-    url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
-    url.searchParams.set('outFields', '*');
-    url.searchParams.set('inSR', '4326');
-    url.searchParams.set('outSR', '4326');
-    const data = await fetch(url).then(r => r.json());
+    let features = [];
+    for (let offset = 0, page = 0; page < 12; page++) {
+      const url = new URL(CFG.mosApi);
+      url.searchParams.set('f', 'geojson');
+      url.searchParams.set('geometry', geometry);
+      url.searchParams.set('geometryType', 'esriGeometryEnvelope');
+      url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
+      url.searchParams.set('outFields', '*');
+      url.searchParams.set('inSR', '4326');
+      url.searchParams.set('outSR', '4326');
+      url.searchParams.set('resultOffset', String(offset));
+      const data = await fetch(url).then(r => r.json());
+      features = features.concat(data.features || []);
+      if (!data.exceededTransferLimit) break;
+      offset += (data.features || []).length || 1000;
+    }
     if (state.layers.mos) map.removeLayer(state.layers.mos);
-    state.layers.mos = L.geoJSON(data, {
+    state.layers.mos = L.geoJSON({ type: 'FeatureCollection', features }, {
       style: f => { const code = f.properties?.mos2025; const color = mosColor(code); return { color, weight: 0.5, opacity: 0.6, fillColor: color, fillOpacity: 0.55 }; },
       onEachFeature: (f, layer) => layer.bindTooltip(MOS_LABELS[f.properties?.mos2025] || 'Occupation du sol', { sticky: true })
     });
