@@ -90,6 +90,7 @@ let refreshCommuneList = () => {};
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? '—').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c));
 const formatNumber = n => new Intl.NumberFormat('fr-FR').format(Number(n) || 0);
+const toTitleCase = s => String(s || '').toLocaleLowerCase('fr').replace(/(^|[\s'’-])\p{L}/gu, c => c.toLocaleUpperCase('fr'));
 
 const map = L.map('map', { zoomControl: true, preferCanvas: true, zoomSnap: 0.25, zoomDelta: 1, minZoom: 10, maxZoom: 19 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
@@ -616,7 +617,7 @@ function setupDynamicLayers() {
     { id: 'railLignes', group: 'Transports', label: 'Voies ferrées (tracés)', description: 'RER, Transilien, tramway · Île-de-France Mobilités · GTFS', color: '#e1000f', active: false, kind: 'commune' },
     { id: 'busIdfm', group: 'Transports', label: 'Arrêts de bus', description: 'Île-de-France Mobilités', color: '#0063cb', active: false, kind: 'commune' },
     { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#7a1fa2', active: true, kind: 'commune' },
-    { id: 'routes', group: 'Transports', label: 'Routes principales', description: 'DDT 95 · réseau routier', color: '#68737d', active: false, kind: 'commune' },
+    { id: 'routes', group: 'Transports', label: 'Réseau routier (autoroute, nationale, départementale)', description: 'DDT 95 · réseau routier — code couleur IGN', color: '#e3572a', active: false, kind: 'commune' },
     { id: 'cyclable', group: 'Transports', label: 'Pistes cyclables', description: 'DDT 95 · itinéraires cyclables', color: '#18753c', active: false, kind: 'commune' },
     { id: 'inondation', group: 'Risques naturels', label: 'Zonage inondation (PPRI)', description: 'Géorisques · plans de prévention approuvés', color: '#1479c9', active: false, kind: 'wms', wms: 'PPRN_ZONE_INOND' },
     { id: 'mvt', group: 'Risques naturels', label: 'Mouvement de terrain (PPRN)', description: 'Géorisques · plans de prévention approuvés', color: '#7a4a1e', active: false, kind: 'wms', wms: 'PPRN_ZONE_MVT' },
@@ -758,6 +759,19 @@ function parseWindowJson(text) {
 }
 
 let roadsCache = null;
+const ROAD_STYLES = {
+  Autoroute: { color: '#c1121f', weight: 4.5, opacity: 0.95 },
+  Nationale: { color: '#e3572a', weight: 3.2, opacity: 0.95 },
+  Départementale: { color: '#f2a900', weight: 2.2, opacity: 0.9 },
+  Bretelle: { color: '#c1121f', weight: 1.8, opacity: 0.7 }
+};
+const ROAD_DEFAULT_STYLE = { color: '#9aa0a6', weight: 1, opacity: 0.55 };
+function roadStyle(f) { return ROAD_STYLES[f.properties?.classement] || ROAD_DEFAULT_STYLE; }
+function roadLabel(f) {
+  const c = f.properties?.classement;
+  const kind = c === 'Autoroute' ? 'Autoroute' : c === 'Nationale' ? 'Route nationale' : c === 'Départementale' ? 'Route départementale' : c === 'Bretelle' ? 'Bretelle d’accès' : 'Voirie locale';
+  return `${kind}${f.properties?.numero ? ' ' + f.properties.numero : ''}${f.properties?.toponyme ? ' — ' + f.properties.toponyme : ''}`;
+}
 function buildRoutes() {
   if (!state.contour) return Promise.resolve(null);
   const loadRoads = roadsCache || fetch(CFG.roadsFile).then(r => r.text()).then(parseWindowJson);
@@ -765,9 +779,13 @@ function buildRoutes() {
   return loadRoads.then(fc => {
     const features = (fc.features || []).filter(f => { try { return turf.booleanIntersects(f, state.contour); } catch { return false; } });
     if (!features.length) return null;
+    // Les routes principales sont dessinées en dernier pour rester lisibles
+    // au-dessus des petites voiries, comme sur les cartes IGN.
+    const order = { Autoroute: 3, Nationale: 2, Départementale: 1 };
+    features.sort((a, b) => (order[a.properties?.classement] || 0) - (order[b.properties?.classement] || 0));
     return L.geoJSON({ type: 'FeatureCollection', features }, {
-      style: f => ({ color: '#68737d', weight: f.properties?.classement === 'Départementale' ? 2.5 : 1.5, opacity: 0.8 }),
-      onEachFeature: (f, layer) => layer.bindTooltip(`${f.properties?.numero || ''} ${f.properties?.toponyme || ''}`.trim() || 'Route', { sticky: true })
+      style: roadStyle,
+      onEachFeature: (f, layer) => layer.bindTooltip(roadLabel(f), { sticky: true })
     });
   }).catch(() => null);
 }
@@ -1164,14 +1182,13 @@ function openFoncierPublicDrawer(feature, info) {
   const p = feature.properties || {};
   openInfoDrawer({
     kicker: 'FONCIER PUBLIC',
-    title: info?.[2] || 'Propriétaire public',
+    title: `Parcelle ${p.section || ''}${p.numero || ''}`.trim() || 'Parcelle',
     sub: p.idu || '',
     sections: [{
       title: 'Propriété publique',
       rows: [
-        ['Propriétaire', info?.[2]],
-        ['Catégorie', info?.[1]],
-        ['Parcelle', `${p.section || ''}${p.numero || ''}`.trim()],
+        ['Propriétaire', toTitleCase(info?.[2])],
+        ['Catégorie', toTitleCase(info?.[1])],
         ['Contenance', p.contenance ? `${formatNumber(p.contenance)} m²` : null]
       ].filter(([, v]) => v),
       note: 'urbanisme95 · propriétaires publics par parcelle (DGFiP)'
@@ -1243,4 +1260,4 @@ $('exportOcte').addEventListener('click', () => {
   window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');
 });
 
-window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, escapeHtml, formatNumber, octeUrl: () => `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf` };
+window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, roadStyle, escapeHtml, formatNumber, octeUrl: () => `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf` };

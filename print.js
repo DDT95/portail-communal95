@@ -5,7 +5,7 @@
     document.body.innerHTML = '<p style="padding:40px;font:16px Marianne,Arial,sans-serif">Cette page s’ouvre depuis le bouton d’export de la fiche communale.</p>';
     return;
   }
-  const { state, MOS_LABELS, mosColor, PUBLIC_LAND_COLORS, escapeHtml, formatNumber } = app;
+  const { state, MOS_LABELS, mosColor, PUBLIC_LAND_COLORS, roadStyle, escapeHtml, formatNumber } = app;
   const mode = new URLSearchParams(location.search).get('mode') === 'fiche' ? 'fiche' : 'carte';
   const statusEl = document.getElementById('pdfStatus');
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -77,6 +77,8 @@
         L.geoJSON(data, { style: f => { const c = mosColor(f.properties?.mos2025); return { color: c, weight: 0.4, opacity: 0.5, fillColor: c, fillOpacity: 0.6 }; } }).addTo(map);
       } else if (def.id === 'foncierPublic') {
         L.geoJSON(data, { style: f => { const c = PUBLIC_LAND_COLORS[f.properties?.info0] || def.color; return { color: c, weight: 1.5, opacity: 1, fillColor: c, fillOpacity: 0.5 }; } }).addTo(map);
+      } else if (def.id === 'routes') {
+        L.geoJSON(data, { style: roadStyle }).addTo(map);
       } else {
         L.geoJSON(data, {
           style: { color: def.color, weight: 1.5, opacity: 0.9, fillColor: def.color, fillOpacity: 0.35 },
