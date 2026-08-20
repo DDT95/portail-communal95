@@ -91,7 +91,7 @@ const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4'
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
   elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null, securite: null,
-  layers: {}, layerDefs: [],
+  layers: {}, layerDefs: [], layerLoading: new Set(),
   drawerMode: 'commune'
 };
 const compareSelection = new Map();
@@ -482,7 +482,7 @@ async function loadMosSummary(contour) {
       url.searchParams.set('inSR', '4326');
       url.searchParams.set('outSR', '4326');
       url.searchParams.set('resultOffset', String(offset));
-      const data = await fetch(url).then(r => r.json());
+      const data = await fetchTimeout(url).then(r => r.json());
       (data.features || []).forEach(f => {
         let area = 0;
         try { area = turf.area(turf.intersect(turf.featureCollection([f, contourFeature]))) || 0; } catch { area = 0; }
@@ -884,7 +884,7 @@ async function loadSup() {
   const b = map.getBounds();
   const geom = bboxGeom(b);
   try {
-    const data = await fetch(CFG.gpuSupApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.ok ? r.json() : { features: [] });
+    const data = await fetchTimeout(CFG.gpuSupApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.ok ? r.json() : { features: [] });
     if (state.layers.sup) map.removeLayer(state.layers.sup);
     state.layers.sup = L.geoJSON(data, {
       style: { color: '#a15c9e', weight: 1.5, opacity: 0.9, fillColor: '#a15c9e', fillOpacity: 0.15 },
@@ -902,10 +902,10 @@ async function loadFoncierPublic() {
   const b = map.getBounds();
   const geom = bboxGeom(b);
   try {
-    foncierPublicCache = foncierPublicCache || fetch(CFG.foncierPublicFile).then(r => r.json());
+    foncierPublicCache = foncierPublicCache || fetchTimeout(CFG.foncierPublicFile).then(r => r.json());
     const [publicData, response] = await Promise.all([
       foncierPublicCache,
-      fetch(`${CFG.cadastreApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json()).catch(() => fetch(CFG.cadastreApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.json()))
+      fetchTimeout(`${CFG.cadastreApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json()).catch(() => fetchTimeout(CFG.cadastreApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.json()))
     ]);
     const features = (response?.features || []).filter(f => publicData[f.properties?.idu || f.id]);
     if (state.layers.foncierPublic) map.removeLayer(state.layers.foncierPublic);
@@ -940,7 +940,7 @@ async function loadMos() {
       url.searchParams.set('inSR', '4326');
       url.searchParams.set('outSR', '4326');
       url.searchParams.set('resultOffset', String(offset));
-      const data = await fetch(url).then(r => r.json());
+      const data = await fetchTimeout(url).then(r => r.json());
       features = features.concat(data.features || []);
       if (!data.exceededTransferLimit) break;
       offset += (data.features || []).length || 1000;
@@ -1003,17 +1003,21 @@ function buildWmsLayers() {
   });
 }
 
+const ZOOM_LAYER_LOADERS = { batiments: loadBatiments, cadastre: loadCadastre, rpg: loadRpg, gpu: loadGpu, sup: loadSup, foncierPublic: loadFoncierPublic, mos: loadMos };
+function runZoomLayerLoader(id) {
+  state.layerLoading.add(id);
+  document.querySelector(`[data-layer-row="${id}"]`)?.classList.add('loading');
+  Promise.resolve(ZOOM_LAYER_LOADERS[id]()).finally(() => {
+    state.layerLoading.delete(id);
+    document.querySelector(`[data-layer-row="${id}"]`)?.classList.remove('loading');
+  });
+}
+
 function refreshDetailLayers() {
   map.invalidateSize();
   updateZoomNotice();
   if (map.getZoom() < CFG.zoomGated) return;
-  if (state.layerDefs.find(l => l.id === 'batiments')?.active) loadBatiments();
-  if (state.layerDefs.find(l => l.id === 'cadastre')?.active) loadCadastre();
-  if (state.layerDefs.find(l => l.id === 'rpg')?.active) loadRpg();
-  if (state.layerDefs.find(l => l.id === 'gpu')?.active) loadGpu();
-  if (state.layerDefs.find(l => l.id === 'sup')?.active) loadSup();
-  if (state.layerDefs.find(l => l.id === 'foncierPublic')?.active) loadFoncierPublic();
-  if (state.layerDefs.find(l => l.id === 'mos')?.active) loadMos();
+  Object.keys(ZOOM_LAYER_LOADERS).forEach(id => { if (state.layerDefs.find(l => l.id === id)?.active) runZoomLayerLoader(id); });
 }
 
 function updateZoomNotice() {
@@ -1039,7 +1043,7 @@ async function loadBatiments() {
     let url = `${CFG.rnbApi}?bbox=${bbox}&limit=100`;
     let all = [];
     for (let page = 0; page < 8 && url; page++) {
-      const data = await fetch(url).then(r => r.json());
+      const data = await fetchTimeout(url).then(r => r.json());
       all = all.concat(data.features || []);
       url = (data.links || []).find(l => l.rel === 'next')?.href || null;
     }
@@ -1059,9 +1063,9 @@ async function loadCadastre() {
   try {
     let response;
     try {
-      response = await fetch(`${CFG.cadastreApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
+      response = await fetchTimeout(`${CFG.cadastreApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
     } catch {
-      response = await fetch(CFG.cadastreApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.json());
+      response = await fetchTimeout(CFG.cadastreApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ geom }) }).then(r => r.json());
     }
     const features = response?.features || [];
     if (state.layers.cadastre) map.removeLayer(state.layers.cadastre);
@@ -1080,7 +1084,7 @@ async function loadRpg() {
   const b = map.getBounds();
   const geom = bboxGeom(b);
   try {
-    const data = await fetch(`${CFG.rpgApi}?annee=2024&geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
+    const data = await fetchTimeout(`${CFG.rpgApi}?annee=2024&geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
     if (state.layers.rpg) map.removeLayer(state.layers.rpg);
     state.layers.rpg = L.geoJSON(data, {
       style: { color: '#8a9a3b', weight: 1, opacity: 0.9, fillColor: '#8a9a3b', fillOpacity: 0.3 },
@@ -1092,7 +1096,7 @@ async function loadRpg() {
 
 async function loadGpu() {
   try {
-    const data = await fetch(`${CFG.gpuApi}?partition=DU_${state.code}`).then(r => r.ok ? r.json() : { features: [] });
+    const data = await fetchTimeout(`${CFG.gpuApi}?partition=DU_${state.code}`).then(r => r.ok ? r.json() : { features: [] });
     if (state.layers.gpu) map.removeLayer(state.layers.gpu);
     state.layers.gpu = L.geoJSON(data, {
       style: { color: '#0d5c63', weight: 1, opacity: 0.85, fillColor: '#0d5c63', fillOpacity: 0.15 },
@@ -1276,8 +1280,8 @@ function toggleLayer(id) {
   const layer = state.layers[id];
   if (def.active) {
     if (layer) layer.addTo(map);
-    if (def.kind === 'zoom' && map.getZoom() >= CFG.zoomGated) {
-      if (id === 'batiments') loadBatiments(); else if (id === 'cadastre') loadCadastre(); else if (id === 'rpg') loadRpg(); else if (id === 'gpu') loadGpu(); else if (id === 'sup') loadSup(); else if (id === 'foncierPublic') loadFoncierPublic(); else if (id === 'mos') loadMos();
+    if (def.kind === 'zoom' && map.getZoom() >= CFG.zoomGated && ZOOM_LAYER_LOADERS[id]) {
+      runZoomLayerLoader(id);
     }
   } else if (layer) {
     map.removeLayer(layer);
