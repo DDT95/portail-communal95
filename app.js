@@ -62,6 +62,16 @@ const FINESS_CATS = {
   handicap: { label: 'Accueil handicap & enfance', color: '#0078f3' }
 };
 
+// Pictogrammes sobres et reconnaissables pour les marqueurs de la carte —
+// pas de logos officiels reproduits (droits/usage), juste des symboles usuels.
+const SERVICE_TYPE_GLYPHS = {
+  gendarmerie: '🛡️', gendarmerie_moto: '🛡️', gendarmerie_departementale: '🛡️',
+  police: '👮', commissariat_police: '👮', police_municipale: '👮',
+  fire_station: '⛑️', centre_penitentiaire: '🔒'
+};
+const SERVICE_CAT_GLYPHS = { france_services: 'ℹ️', administration: '🏛️', securite: '🛡️', quotidien: '🛍️', culture: '🎭' };
+const FINESS_CAT_GLYPHS = { hopitaux: '🏥', medecins: '🩺', pharmacies: '➕', ehpad: '🧓', handicap: '♿' };
+
 const MOS_LABELS = {
   1: 'Bois ou forêts', 2: 'Coupes ou clairières en forêts', 3: 'Peupleraies', 4: 'Espaces ouverts à végétation arborée ou herbacée', 5: 'Berges', 6: 'Terres labourées', 7: 'Prairies', 8: 'Vergers, pépinières', 9: 'Maraîchage, horticulture', 10: 'Cultures intensives sous serres', 11: 'Eau fermée', 12: 'Cours d’eau', 13: 'Parcs ou jardins publics', 14: 'Autres espaces verts publics', 15: 'Jardins familiaux', 16: 'Jardins de l’habitat', 17: 'Terrains de sport en plein air', 18: 'Tennis découverts', 19: 'Baignade', 20: 'Golfs', 21: 'Hippodromes', 22: 'Camping, caravaning', 23: 'Parcs liés aux activités de loisirs', 24: 'Esplanades et places', 25: 'Cimetières', 26: 'Surfaces engazonnées avec ou sans arbustes', 27: 'Terrains vacants', 28: 'Habitat pavillonnaire', 29: 'Ensemble d’habitat pavillonnaire', 30: 'Habitat rural', 31: 'Habitat continu bas', 32: 'Habitat collectif continu haut', 33: 'Habitat collectif discontinu', 34: 'Prisons', 35: 'Habitat autre', 36: 'Activités en tissu urbain mixte', 37: 'Grandes emprises industrielles', 38: 'Zones d’activités économiques', 39: 'Entreposage à l’air libre', 40: 'Entrepôts logistiques', 41: 'Stockage de données', 42: 'Grandes surfaces commerciales', 43: 'Autres commerces', 44: 'Stations-services', 45: 'Bureaux', 46: 'Production d’eau', 47: 'Assainissement', 48: 'Électricité', 49: 'Gaz', 50: 'Pétrole', 51: 'Chaleur', 52: 'Extraction de matériaux', 53: 'Tri et valorisation des déchets', 54: 'Stockage de déchets', 55: 'Installations sportives couvertes', 56: 'Centres équestres', 57: 'Piscines couvertes', 58: 'Piscines de plein air', 59: 'Circuits sportifs', 60: 'Enseignement du premier degré', 61: 'Enseignement secondaire', 62: 'Enseignement supérieur', 63: 'Centre de formation professionnelle', 64: 'Hôpitaux, cliniques', 65: 'Autres équipements de santé', 66: 'Grands centres de congrès et d’exposition', 67: 'Équipements culturels et de loisirs', 68: 'Sièges de grandes administrations', 69: 'Équipements de sécurité civile', 70: 'Équipements à accès public limité', 71: 'Lieux de culte', 72: 'Autres équipements de proximité', 73: 'Emprise ferrée', 74: 'Voies routières', 75: 'Parkings de surface', 76: 'Parkings en étages', 77: 'Gares routières, dépôts de bus', 78: 'Installations aéroportuaires', 79: 'Chantiers'
 };
@@ -300,7 +310,20 @@ function buildLandingMap() {
   });
   updateCompareBar();
 
+  map.createPane('deptMaskPane'); map.getPane('deptMaskPane').style.zIndex = 410; map.getPane('deptMaskPane').style.pointerEvents = 'none';
   fetch(`${CFG.communesApi}/departements/95/communes?fields=nom,code,contour&format=geojson&geometry=contour`).then(r => r.json()).then(fc => {
+    // Estompe tout ce qui dépasse du Val-d’Oise pour que le département
+    // ressorte nettement, plutôt que de laisser les départements voisins
+    // se mêler visuellement au fond de carte.
+    const holes = fc.features.flatMap(f => {
+      const g = f.geometry;
+      return g.type === 'Polygon' ? [g.coordinates[0]] : (g.coordinates || []).map(p => p[0]);
+    });
+    L.geoJSON({
+      type: 'Feature', properties: {},
+      geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...holes] }
+    }, { pane: 'deptMaskPane', interactive: false, style: { stroke: false, fillColor: '#eef1f5', fillOpacity: 0.82, fillRule: 'evenodd' } }).addTo(map);
+
     const layer = L.geoJSON(fc, {
       style: { color: '#000091', weight: 1.2, opacity: 0.55, fillColor: '#e8eaf7', fillOpacity: 0.75 },
       onEachFeature: (f, l) => {
@@ -312,6 +335,10 @@ function buildLandingMap() {
         });
       }
     }).addTo(map);
+    try {
+      const merged = fc.features.reduce((acc, f) => acc ? turf.union(turf.featureCollection([acc, f])) : f, null);
+      if (merged) L.geoJSON(merged, { interactive: false, style: { color: '#000091', weight: 2.6, opacity: 0.9, fill: false } }).addTo(map);
+    } catch { /* la fusion des contours peut échouer sur des géométries limites, l’effet reste purement décoratif */ }
     requestAnimationFrame(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [55, 55], maxZoom: 11, animate: false }); });
   });
 }
@@ -677,7 +704,7 @@ function buildEcoles() {
     return L.layerGroup(records.map(r => {
       const f = r.fields;
       const isPriv = f.statut_public_prive === 'Privé';
-      const icon = L.divIcon({ className: '', html: `<div class="theme-marker school${isPriv ? ' alt' : ''}">${(f.type_etablissement || 'É')[0]}</div>`, iconSize: [22, 22] });
+      const icon = L.divIcon({ className: '', html: `<div class="theme-marker glyph school${isPriv ? ' alt' : ''}">🏫</div>`, iconSize: [22, 22] });
       return L.marker([f.latitude, f.longitude], { icon }).bindPopup(`<strong>${escapeHtml(f.nom_etablissement)}</strong><br>${escapeHtml(f.type_etablissement)} · ${escapeHtml(f.statut_public_prive)}<br>${escapeHtml(f.adresse_1 || '')}`);
     }));
   });
@@ -688,7 +715,8 @@ function buildServiceLayer(category) {
   if (!records.length) return Promise.resolve(null);
   const meta = SERVICE_CATS[category];
   return Promise.resolve(L.layerGroup(records.map(r => {
-    const icon = L.divIcon({ className: '', html: `<div class="theme-marker svc" style="background:${meta.color}">${meta.label[0]}</div>`, iconSize: [22, 22] });
+    const glyph = SERVICE_TYPE_GLYPHS[r.type] || SERVICE_CAT_GLYPHS[category] || meta.label[0];
+    const icon = L.divIcon({ className: '', html: `<div class="theme-marker glyph svc" style="background:${meta.color}">${glyph}</div>`, iconSize: [22, 22] });
     return L.marker([r.lat, r.lon], { icon }).bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.typeLabel || meta.label)}<br>${escapeHtml(r.address || '')}`);
   })));
 }
@@ -698,7 +726,8 @@ function buildFinessLayer(category) {
   if (!records.length) return Promise.resolve(null);
   const meta = FINESS_CATS[category];
   return Promise.resolve(L.layerGroup(records.map(r => {
-    const icon = L.divIcon({ className: '', html: `<div class="theme-marker svc" style="background:${meta.color}">${r.urgences ? '+' : meta.label[0]}</div>`, iconSize: [22, 22] });
+    const glyph = r.urgences ? '🚑' : (FINESS_CAT_GLYPHS[category] || meta.label[0]);
+    const icon = L.divIcon({ className: '', html: `<div class="theme-marker glyph svc" style="background:${meta.color}">${glyph}</div>`, iconSize: [22, 22] });
     return L.marker([r.lat, r.lon], { icon }).bindPopup(`<strong>${escapeHtml(r.nom)}</strong><br>${escapeHtml(meta.label)}${r.urgences ? ' · Urgences' : ''}<br>${escapeHtml(r.adresse)}${r.tel ? '<br>' + escapeHtml(r.tel) : ''}`);
   })));
 }
