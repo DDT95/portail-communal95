@@ -96,6 +96,11 @@ const state = {
 };
 const compareSelection = new Map();
 let refreshCommuneList = () => {};
+// Déclarés ici (avant le boot) car loadCommune() les appelle avant son
+// premier await : à ce point le script n'a pas fini de s'évaluer, donc
+// une const/let déclarée plus bas provoquerait une TDZ ReferenceError.
+let inseeProfilesCache = null;
+let securiteCache = null;
 
 const $ = id => document.getElementById(id);
 // Certaines API publiques (Géorisques, Cerema, Hub'Eau...) peuvent rester
@@ -354,6 +359,10 @@ async function loadCommune(code, nomHint) {
   $('communeForm').hidden = true;
   $('communeFilters').hidden = true;
   try {
+    // Ces appels ne dépendent que du code Insee (pas du contour) : on les
+    // lance en parallèle de la fiche commune elle-même plutôt qu'après,
+    // pour ne pas payer leur latence deux fois.
+    const early = [loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadInsee(code), loadSecurite(code)];
     const commune = await fetchTimeout(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
     if (!commune.nom) throw new Error('Commune introuvable');
     state.nom = commune.nom || nomHint || code;
@@ -380,7 +389,7 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour), loadInsee(code), loadSecurite(code)]);
+    await Promise.all([...early, loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour)]);
     loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
     setupDynamicLayers();
     renderControls();
@@ -445,13 +454,11 @@ function loadFiness(contour) {
   }).catch(() => { state.finess = []; });
 }
 
-let inseeProfilesCache = null;
 function loadInsee(code) {
   inseeProfilesCache = inseeProfilesCache || fetchTimeout(CFG.voInseeApi).then(r => r.json());
   return inseeProfilesCache.then(profiles => { state.insee = profiles[code] || null; }).catch(() => { state.insee = null; });
 }
 
-let securiteCache = null;
 function loadSecurite(code) {
   securiteCache = securiteCache || fetchTimeout(CFG.securiteFile).then(r => r.json());
   return securiteCache.then(all => { state.securite = all[code] || null; }).catch(() => { state.securite = null; });
