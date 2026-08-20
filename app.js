@@ -1123,7 +1123,6 @@ function openPrintPage(mode) {
 }
 
 $('exportMap').addEventListener('click', () => openPrintPage('carte'));
-$('exportFiche').addEventListener('click', () => openPrintPage('fiche'));
 $('exportOcte').addEventListener('click', () => {
   exportDialog.close();
   window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');
