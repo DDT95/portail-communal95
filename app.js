@@ -613,6 +613,7 @@ function setupDynamicLayers() {
     { id: 'foretsPubliques', group: 'Biodiversité', label: 'Forêts publiques', description: 'IGN BD TOPO · ONF', color: '#174f2d', active: false, kind: 'commune' },
     { id: 'jardins', group: 'Biodiversité', label: 'Jardins remarquables', description: 'Ministère de la Culture · Région Île-de-France', color: '#95c11f', active: false, kind: 'commune' },
     { id: 'busLignes', group: 'Transports', label: 'Lignes de bus (tracés)', description: 'Île-de-France Mobilités · GTFS', color: '#e4794a', active: false, kind: 'commune' },
+    { id: 'railLignes', group: 'Transports', label: 'Voies ferrées (tracés)', description: 'RER, Transilien, tramway · Île-de-France Mobilités · GTFS', color: '#e1000f', active: false, kind: 'commune' },
     { id: 'busIdfm', group: 'Transports', label: 'Arrêts de bus', description: 'Île-de-France Mobilités', color: '#0063cb', active: false, kind: 'commune' },
     { id: 'railIdfm', group: 'Transports', label: 'Gares et stations (rail/tram)', description: 'Île-de-France Mobilités', color: '#7a1fa2', active: true, kind: 'commune' },
     { id: 'routes', group: 'Transports', label: 'Routes principales', description: 'DDT 95 · réseau routier', color: '#68737d', active: false, kind: 'commune' },
@@ -635,6 +636,7 @@ function setupDynamicLayers() {
   buildCommuneLayer('foretsPubliques', buildForetsPubliques);
   buildCommuneLayer('jardins', buildJardins);
   buildCommuneLayer('busLignes', buildBusLignes);
+  buildCommuneLayer('railLignes', buildRailLignes);
   buildCommuneLayer('busIdfm', () => buildIdfmArrets('busIdfm', 'bus'));
   buildCommuneLayer('railIdfm', () => buildIdfmArrets('railIdfm', ['rail', 'tram']));
   buildCommuneLayer('routes', buildRoutes);
@@ -828,7 +830,10 @@ async function loadSup() {
     if (state.layers.sup) map.removeLayer(state.layers.sup);
     state.layers.sup = L.geoJSON(data, {
       style: { color: '#a15c9e', weight: 1.5, opacity: 0.9, fillColor: '#a15c9e', fillOpacity: 0.15 },
-      onEachFeature: (f, layer) => layer.bindTooltip(f.properties?.generateur_l || f.properties?.libelle_l || 'Servitude', { sticky: true })
+      onEachFeature: (f, layer) => {
+        layer.bindTooltip(f.properties?.nomass || f.properties?.suptype || 'Servitude', { sticky: true });
+        layer.on('click', e => { L.DomEvent.stopPropagation(e); openSupDrawer(f); });
+      }
     });
     if (state.layerDefs.find(l => l.id === 'sup')?.active) state.layers.sup.addTo(map);
   } catch (error) { console.warn('SUP indisponible', error); }
@@ -848,7 +853,11 @@ async function loadFoncierPublic() {
     if (state.layers.foncierPublic) map.removeLayer(state.layers.foncierPublic);
     state.layers.foncierPublic = L.geoJSON(features, {
       style: f => { const info = publicData[f.properties?.idu || f.id]; const color = PUBLIC_LAND_COLORS[info?.[0]] || '#687787'; return { color, weight: 2, opacity: 1, fillColor: color, fillOpacity: 0.5 }; },
-      onEachFeature: (f, layer) => { const info = publicData[f.properties?.idu || f.id]; layer.bindTooltip(`<strong>${escapeHtml(info?.[2] || 'Propriétaire public')}</strong><br>${escapeHtml(info?.[1] || '')}`, { sticky: true }); }
+      onEachFeature: (f, layer) => {
+        const info = publicData[f.properties?.idu || f.id];
+        layer.bindTooltip(`<strong>${escapeHtml(info?.[2] || 'Propriétaire public')}</strong><br>${escapeHtml(info?.[1] || '')}`, { sticky: true });
+        layer.on('click', e => { L.DomEvent.stopPropagation(e); openFoncierPublicDrawer(f, info); });
+      }
     });
     if (state.layerDefs.find(l => l.id === 'foncierPublic')?.active) state.layers.foncierPublic.addTo(map);
   } catch (error) { console.warn('Foncier public indisponible', error); }
@@ -877,7 +886,8 @@ async function loadMos() {
 }
 
 let mobilityCache = null;
-function buildBusLignes() {
+const RAIL_GTFS_TYPES = ['0', '1', '2', '7']; // tram, métro, rail, funiculaire
+function buildTransportLignes(isRail) {
   if (!state.contour) return Promise.resolve(null);
   const loadMobility = mobilityCache || fetch(CFG.mobilityFile).then(r => r.text()).then(parseWindowJson);
   mobilityCache = loadMobility;
@@ -886,15 +896,18 @@ function buildBusLignes() {
     const layers = [];
     Object.values(routes).forEach(route => {
       if (!route.geometry?.length) return;
+      if (RAIL_GTFS_TYPES.includes(String(route.type)) !== isRail) return;
       const inside = route.geometry.some(([lat, lon]) => { try { return turf.booleanPointInPolygon(turf.point([lon, lat]), state.contour); } catch { return false; } });
       if (!inside) return;
-      const color = '#' + (route.color || '0063cb');
+      const color = '#' + (route.color || (isRail ? 'e1000f' : '0063cb'));
       const label = `${route.short || route.long || 'Ligne'}${route.long && route.short !== route.long ? ' · ' + route.long : ''}`;
-      layers.push(L.polyline(route.geometry, { color, weight: 3, opacity: 0.85 }).bindTooltip(label, { sticky: true }));
+      layers.push(L.polyline(route.geometry, { color, weight: isRail ? 3.6 : 3, opacity: 0.9, dashArray: isRail ? '1,6' : null }).bindTooltip(label, { sticky: true }));
     });
     return layers.length ? L.layerGroup(layers) : null;
   }).catch(() => null);
 }
+function buildBusLignes() { return buildTransportLignes(false); }
+function buildRailLignes() { return buildTransportLignes(true); }
 
 function buildIdfmArrets(id, types) {
   const typeList = Array.isArray(types) ? types : [types];
@@ -985,7 +998,10 @@ async function loadCadastre() {
     if (state.layers.cadastre) map.removeLayer(state.layers.cadastre);
     state.layers.cadastre = L.geoJSON(features, {
       style: { color: '#6a4c93', weight: 1, opacity: 0.85, fillOpacity: 0 },
-      onEachFeature: (f, layer) => layer.bindTooltip(`Parcelle ${f.properties?.section || ''}${f.properties?.numero || ''}`, { sticky: true })
+      onEachFeature: (f, layer) => {
+        layer.bindTooltip(`Parcelle ${f.properties?.section || ''}${f.properties?.numero || ''}`, { sticky: true });
+        layer.on('click', e => { L.DomEvent.stopPropagation(e); openCadastreDrawer(f); });
+      }
     });
     if (state.layerDefs.find(l => l.id === 'cadastre')?.active) state.layers.cadastre.addTo(map);
   } catch (error) { console.warn('Cadastre indisponible', error); }
@@ -995,7 +1011,7 @@ async function loadRpg() {
   const b = map.getBounds();
   const geom = bboxGeom(b);
   try {
-    const data = await fetch(`${CFG.rpgApi}?geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
+    const data = await fetch(`${CFG.rpgApi}?annee=2024&geom=${encodeURIComponent(JSON.stringify(geom))}`).then(r => r.json());
     if (state.layers.rpg) map.removeLayer(state.layers.rpg);
     state.layers.rpg = L.geoJSON(data, {
       style: { color: '#8a9a3b', weight: 1, opacity: 0.9, fillColor: '#8a9a3b', fillOpacity: 0.3 },
@@ -1011,7 +1027,10 @@ async function loadGpu() {
     if (state.layers.gpu) map.removeLayer(state.layers.gpu);
     state.layers.gpu = L.geoJSON(data, {
       style: { color: '#0d5c63', weight: 1, opacity: 0.85, fillColor: '#0d5c63', fillOpacity: 0.15 },
-      onEachFeature: (f, layer) => layer.bindTooltip(`Zone ${f.properties?.libelle || ''} — ${f.properties?.libelong || f.properties?.typezone || ''}`, { sticky: true })
+      onEachFeature: (f, layer) => {
+        layer.bindTooltip(`Zone ${f.properties?.libelle || ''} — ${f.properties?.libelong || f.properties?.typezone || ''}`, { sticky: true });
+        layer.on('click', e => { L.DomEvent.stopPropagation(e); openGpuDrawer(f); });
+      }
     });
     if (state.layerDefs.find(l => l.id === 'gpu')?.active) state.layers.gpu.addTo(map);
   } catch (error) { console.warn('GPU indisponible', error); }
@@ -1069,12 +1088,108 @@ async function loadBdnb(rnbId) {
   }
 }
 
+function openInfoDrawer({ kicker, title, sub, sections }) {
+  state.drawerMode = 'batiment';
+  $('drawer-kicker').textContent = kicker;
+  $('drawer-title').textContent = title;
+  $('drawer-sub').textContent = sub;
+  $('drawer-body').innerHTML = sections.map(s => `<section class="result-section"><h3>${escapeHtml(s.title)}</h3>${s.rows?.length ? `<dl class="data-grid">${s.rows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${typeof v === 'object' ? v.html : escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${s.note ? `<p class="source-note">${s.note}</p>` : ''}</section>`).join('');
+  $('drawer-actions').innerHTML = `<button id="drawer-back" type="button">← Retour à la fiche commune</button>`;
+  $('drawer-back').onclick = () => renderFicheDrawer(true);
+  $('drawer').classList.add('open');
+  $('drawer').setAttribute('aria-hidden', 'false');
+}
+
+function openCadastreDrawer(feature) {
+  const p = feature.properties || {};
+  openInfoDrawer({
+    kicker: 'PARCELLE CADASTRALE',
+    title: `${p.section || ''}${p.numero || ''}`.trim() || 'Parcelle',
+    sub: p.idu || '',
+    sections: [{
+      title: 'Cadastre',
+      rows: [
+        ['Commune', p.nom_com],
+        ['Section', p.section],
+        ['Numéro', p.numero],
+        ['Contenance', p.contenance ? `${formatNumber(p.contenance)} m²` : null],
+        ['Identifiant (IDU)', p.idu]
+      ].filter(([, v]) => v),
+      note: 'APICarto IGN — cadastre'
+    }]
+  });
+}
+
+function openGpuDrawer(feature) {
+  const p = feature.properties || {};
+  openInfoDrawer({
+    kicker: 'ZONAGE PLU',
+    title: p.libelle || 'Zone',
+    sub: p.idurba || '',
+    sections: [{
+      title: 'Document d’urbanisme',
+      rows: [
+        ['Zone', p.libelle],
+        ['Libellé', p.libelong],
+        ['Type de zone', p.typezone],
+        ['Document', p.idurba],
+        ['Approuvé le', p.datappro],
+        ['Règlement', p.urlfic ? { html: `<a href="${escapeHtml(p.urlfic)}" target="_blank" rel="noreferrer">Consulter le PDF ↗</a>` } : null]
+      ].filter(([, v]) => v),
+      note: 'Géoportail de l’urbanisme (GPU) — zone-urba'
+    }]
+  });
+}
+
+function openSupDrawer(feature) {
+  const p = feature.properties || {};
+  openInfoDrawer({
+    kicker: 'SERVITUDE D’UTILITÉ PUBLIQUE',
+    title: p.nomass || p.suptype || 'Servitude',
+    sub: p.suptype || '',
+    sections: [{
+      title: 'Servitude',
+      rows: [
+        ['Type', p.suptype],
+        ['Nature', p.typeass],
+        ['Nom', p.nomass],
+        ['Source', p.srcgeoass]
+      ].filter(([, v]) => v),
+      note: 'Géoportail de l’urbanisme (GPU) — servitudes d’utilité publique'
+    }]
+  });
+}
+
+function openFoncierPublicDrawer(feature, info) {
+  const p = feature.properties || {};
+  openInfoDrawer({
+    kicker: 'FONCIER PUBLIC',
+    title: info?.[2] || 'Propriétaire public',
+    sub: p.idu || '',
+    sections: [{
+      title: 'Propriété publique',
+      rows: [
+        ['Propriétaire', info?.[2]],
+        ['Catégorie', info?.[1]],
+        ['Parcelle', `${p.section || ''}${p.numero || ''}`.trim()],
+        ['Contenance', p.contenance ? `${formatNumber(p.contenance)} m²` : null]
+      ].filter(([, v]) => v),
+      note: 'urbanisme95 · propriétaires publics par parcelle (DGFiP)'
+    }]
+  });
+}
+
 // ---------- Panneau de couches, regroupé par thème ----------
 function renderControls() {
   const root = $('layer-list');
   const groups = [...new Set(state.layerDefs.map(x => x.group))];
-  root.innerHTML = groups.map(group => `<div class="layer-group"><strong>${group}</strong>${state.layerDefs.filter(x => x.group === group).map(x => `<div class="layer-row" data-layer-row="${x.id}" style="${x.disabled ? 'opacity:.5;pointer-events:none' : ''}"><button class="switch" type="button" data-layer="${x.id}" aria-label="Afficher ${x.label}" aria-pressed="${x.active}"></button><div class="layer-copy"><strong>${x.label}</strong><span>${x.description}${x.kind === 'zoom' ? ' · zoomez pour afficher' : ''}</span></div><i class="swatch" style="background:${x.color}"></i></div>`).join('')}</div>`).join('');
+  root.innerHTML = groups.map(group => `<div class="layer-group"><div class="layer-group-head"><strong>${group}</strong><button type="button" class="layer-group-hide" data-hide-group="${escapeHtml(group)}">Tout masquer</button></div>${state.layerDefs.filter(x => x.group === group).map(x => `<div class="layer-row" data-layer-row="${x.id}" style="${x.disabled ? 'opacity:.5;pointer-events:none' : ''}"><button class="switch" type="button" data-layer="${x.id}" aria-label="Afficher ${x.label}" aria-pressed="${x.active}"></button><div class="layer-copy"><strong>${x.label}</strong><span>${x.description}${x.kind === 'zoom' ? ' · zoomez pour afficher' : ''}</span></div><i class="swatch" style="background:${x.color}"></i></div>`).join('')}</div>`).join('');
   root.querySelectorAll('[data-layer-row]').forEach(row => row.addEventListener('click', () => toggleLayer(row.dataset.layerRow)));
+  root.querySelectorAll('[data-hide-group]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const group = btn.dataset.hideGroup;
+    state.layerDefs.filter(d => d.group === group && d.active && !d.disabled).forEach(d => toggleLayer(d.id));
+  }));
   updateLegend();
   updateZoomNotice();
 }
