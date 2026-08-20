@@ -325,7 +325,7 @@ function buildLandingMap() {
     }, { pane: 'deptMaskPane', interactive: false, style: { stroke: false, fillColor: '#eef1f5', fillOpacity: 0.82, fillRule: 'evenodd' } }).addTo(map);
 
     const layer = L.geoJSON(fc, {
-      style: { color: '#000091', weight: 1.2, opacity: 0.55, fillColor: '#e8eaf7', fillOpacity: 0.75 },
+      style: { color: '#000091', weight: 1.3, opacity: 0.6, fillColor: '#e8eaf7', fillOpacity: 0.75 },
       onEachFeature: (f, l) => {
         l.bindTooltip(f.properties.nom, { sticky: true, direction: 'top' });
         l.on({
@@ -335,10 +335,6 @@ function buildLandingMap() {
         });
       }
     }).addTo(map);
-    try {
-      const merged = fc.features.reduce((acc, f) => acc ? turf.union(turf.featureCollection([acc, f])) : f, null);
-      if (merged) L.geoJSON(merged, { interactive: false, style: { color: '#000091', weight: 2.6, opacity: 0.9, fill: false } }).addTo(map);
-    } catch { /* la fusion des contours peut échouer sur des géométries limites, l’effet reste purement décoratif */ }
     requestAnimationFrame(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [55, 55], maxZoom: 11, animate: false }); });
   });
 }
