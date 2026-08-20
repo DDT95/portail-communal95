@@ -98,6 +98,14 @@ const compareSelection = new Map();
 let refreshCommuneList = () => {};
 
 const $ = id => document.getElementById(id);
+// Certaines API publiques (Géorisques, Cerema, Hub'Eau...) peuvent rester
+// muettes sans jamais répondre ni erreur ni timeout — sans limite, un seul
+// appel bloqué gèle toute la fiche communale indéfiniment (Promise.all).
+function fetchTimeout(url, opts, ms = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
 const escapeHtml = value => String(value ?? '—').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c));
 const formatNumber = n => new Intl.NumberFormat('fr-FR').format(Number(n) || 0);
 const toTitleCase = s => String(s || '').toLocaleLowerCase('fr').replace(/(^|[\s'’-])\p{L}/gu, c => c.toLocaleUpperCase('fr'));
@@ -346,7 +354,7 @@ async function loadCommune(code, nomHint) {
   $('communeForm').hidden = true;
   $('communeFilters').hidden = true;
   try {
-    const commune = await fetch(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
+    const commune = await fetchTimeout(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
     if (!commune.nom) throw new Error('Commune introuvable');
     state.nom = commune.nom || nomHint || code;
     state.contour = commune.contour;
@@ -358,7 +366,7 @@ async function loadCommune(code, nomHint) {
 
     state.kpi = { population: commune.population || null, surface: commune.surface || null, epci: '…', code };
     if (commune.codeEpci) {
-      fetch(`${CFG.communesApi}/epcis/${commune.codeEpci}?fields=nom`).then(r => r.json()).then(e => { state.kpi.epci = e.nom || '—'; renderFicheDrawer(); }).catch(() => { state.kpi.epci = '—'; renderFicheDrawer(); });
+      fetchTimeout(`${CFG.communesApi}/epcis/${commune.codeEpci}?fields=nom`).then(r => r.json()).then(e => { state.kpi.epci = e.nom || '—'; renderFicheDrawer(); }).catch(() => { state.kpi.epci = '—'; renderFicheDrawer(); });
     } else {
       state.kpi.epci = '—';
     }
@@ -394,13 +402,13 @@ function drawContour(contour) {
 
 // ---------- Données de synthèse (volet droit) ----------
 function loadElus(code) {
-  return fetch(CFG.elusFile).then(r => r.json()).then(all => { state.elus = all[code] || null; }).catch(() => { state.elus = null; });
+  return fetchTimeout(CFG.elusFile).then(r => r.json()).then(all => { state.elus = all[code] || null; }).catch(() => { state.elus = null; });
 }
 function loadRisques(code) {
-  return fetch(`${CFG.georisquesApi}?code_insee=${code}`).then(r => r.json()).then(d => { state.risques = d?.data?.[0]?.risques_detail || []; }).catch(() => { state.risques = []; });
+  return fetchTimeout(`${CFG.georisquesApi}?code_insee=${code}`).then(r => r.json()).then(d => { state.risques = d?.data?.[0]?.risques_detail || []; }).catch(() => { state.risques = []; });
 }
 function loadZan(code) {
-  return fetch(`${CFG.ceremaApi}/${code}/`).then(r => r.json()).then(d => {
+  return fetchTimeout(`${CFG.ceremaApi}/${code}/`).then(r => r.json()).then(d => {
     const rows = (d.results || []).filter(r => r.annee >= 2011);
     const total = rows.reduce((sum, r) => sum + (r.naf_arti || 0), 0);
     const last = rows.sort((a, b) => b.annee - a.annee)[0];
@@ -408,7 +416,7 @@ function loadZan(code) {
   }).catch(() => { state.zan = null; });
 }
 function loadEau(code) {
-  return fetch(`${CFG.hubeauApi}?code_commune=${code}&size=1`).then(r => r.json()).then(d => {
+  return fetchTimeout(`${CFG.hubeauApi}?code_commune=${code}&size=1`).then(r => r.json()).then(d => {
     state.eau = d.count ? { reseaux: d.count, reseau: d.data?.[0]?.nom_reseau } : null;
   }).catch(() => { state.eau = null; });
 }
@@ -417,13 +425,13 @@ function loadEnergie(code) {
   url.searchParams.set('where', `code_commune="${code}" and filiere="Electricité" and code_grand_secteur="RESIDENTIEL"`);
   url.searchParams.set('order_by', 'annee desc');
   url.searchParams.set('limit', '1');
-  return fetch(url).then(r => r.json()).then(d => {
+  return fetchTimeout(url).then(r => r.json()).then(d => {
     const row = d.results?.[0];
     state.energie = row ? { annee: row.annee, conso: row.conso_totale_mwh, sites: row.nb_sites } : null;
   }).catch(() => { state.energie = null; });
 }
 function loadServices(nom, contour) {
-  return fetch(CFG.servicesApi).then(r => r.json()).then(d => {
+  return fetchTimeout(CFG.servicesApi).then(r => r.json()).then(d => {
     state.services = (d.records || []).filter(r => {
       if (r.category === 'education' || r.category === 'mobilite' || !r.lat || !r.lon) return false;
       if (r.city === nom) return true;
@@ -432,20 +440,20 @@ function loadServices(nom, contour) {
   }).catch(() => { state.services = []; });
 }
 function loadFiness(contour) {
-  return fetch(CFG.finessFile).then(r => r.json()).then(all => {
+  return fetchTimeout(CFG.finessFile).then(r => r.json()).then(all => {
     state.finess = all.filter(r => { try { return turf.booleanPointInPolygon(turf.point([r.lon, r.lat]), contour); } catch { return false; } });
   }).catch(() => { state.finess = []; });
 }
 
 let inseeProfilesCache = null;
 function loadInsee(code) {
-  inseeProfilesCache = inseeProfilesCache || fetch(CFG.voInseeApi).then(r => r.json());
+  inseeProfilesCache = inseeProfilesCache || fetchTimeout(CFG.voInseeApi).then(r => r.json());
   return inseeProfilesCache.then(profiles => { state.insee = profiles[code] || null; }).catch(() => { state.insee = null; });
 }
 
 let securiteCache = null;
 function loadSecurite(code) {
-  securiteCache = securiteCache || fetch(CFG.securiteFile).then(r => r.json());
+  securiteCache = securiteCache || fetchTimeout(CFG.securiteFile).then(r => r.json());
   return securiteCache.then(all => { state.securite = all[code] || null; }).catch(() => { state.securite = null; });
 }
 
@@ -610,7 +618,7 @@ async function renderQpv(contour) {
   state.qpv = [];
   if (!contour) return;
   try {
-    const all = await fetch(CFG.qpvFile).then(r => r.json());
+    const all = await fetchTimeout(CFG.qpvFile).then(r => r.json());
     state.qpv = all.features.filter(f => { try { return turf.booleanIntersects(f, contour); } catch { return false; } });
   } catch (error) { console.warn('QPV indisponible', error); }
 }
