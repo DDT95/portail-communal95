@@ -131,6 +131,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
 .summary-governance b{margin-top:.5mm;font-size:6.3pt;color:#10104b}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm}
+.summary-column{display:flex;flex-direction:column;gap:1.5mm;min-width:0}
 .summary-grid .result-section{padding:2mm 2.8mm;margin:0;border-radius:2.5mm;break-inside:avoid}
 .summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
 .summary-grid .data-grid>div{padding:.5mm 0;font-size:6.5pt;gap:3mm}

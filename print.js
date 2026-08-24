@@ -186,7 +186,9 @@
     });
     const governance = sections.find(s => s.dataset.sectionTitle === 'Élus et gouvernance');
     const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
-    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid">${selected.join('')}</div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
+    const leftColumn = [selected[0], selected[2], selected[4]].filter(Boolean).join('');
+    const rightColumn = [selected[1], selected[3], selected[5]].filter(Boolean).join('');
+    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid"><div class="summary-column">${leftColumn}</div><div class="summary-column">${rightColumn}</div></div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
     document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
   }
 
