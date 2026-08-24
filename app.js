@@ -115,11 +115,11 @@ const escapeHtml = value => String(value ?? '—').replace(/[&<>'"]/g, c => ({ '
 const formatNumber = n => new Intl.NumberFormat('fr-FR').format(Number(n) || 0);
 const toTitleCase = s => String(s || '').toLocaleLowerCase('fr').replace(/(^|[\s'’-])\p{L}/gu, c => c.toLocaleUpperCase('fr'));
 
-const map = L.map('map', { zoomControl: true, preferCanvas: true, zoomSnap: 0.25, zoomDelta: 1, minZoom: 10, maxZoom: 19 });
+const map = L.map('map', { zoomControl: true, preferCanvas: true, zoomSnap: 0.25, zoomDelta: 0.5, minZoom: 6, maxZoom: 19 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
 map.createPane('riskTiles'); map.getPane('riskTiles').style.zIndex = 350; map.getPane('riskTiles').style.pointerEvents = 'none';
 map.attributionControl.setPrefix('Leaflet');
-map.setView([49.075, 2.105], 10);
+map.fitBounds([[48.89, 1.60], [49.25, 2.60]], { padding: [8, 8] });
 
 function setLoading(on, detail) {
   const loader = $('map-loader');
