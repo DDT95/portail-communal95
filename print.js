@@ -193,28 +193,23 @@
     let themes = [];
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
-    const portal = portalSections();
-    const portalByTheme = new Map(portal.map(s => [s.querySelector('h3')?.textContent || '', s.outerHTML]));
-    const keySection = portal.find(s => s.querySelector('h3')?.textContent === 'Chiffres clés');
-    const keyValues = keySection ? [...keySection.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => ({ label: row.querySelector('dt')?.textContent || '', value: row.querySelector('dd')?.textContent || '' })) : [];
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const groups = [
-      ['Cadre territorial et planification', ['Données générales', 'Déclinaison du SDRIF-E'], ['Chiffres clés', 'Élus et gouvernance']],
-      ['Population, habitat et cadre de vie', ['Indicateurs socio-démographiques', 'Habitat logements'], ['Démographie, revenus et emploi', 'Logement']],
-      ['Économie, foncier et occupation du sol', ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
-      ['Mobilités, eau et transition énergétique', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
-      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés']],
-      ['Projets et démarches territoriales', ['Démarches territoriales'], ['Politique de la ville', 'Sécurité']]
+      ['Données générales', 'Déclinaison du SDRIF-E'],
+      ['Indicateurs socio-démographiques', 'Habitat logements'],
+      ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'],
+      ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'],
+      ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'],
+      ['Démarches territoriales']
     ];
-    const contents = groups.flatMap(([title, octeNames, portalNames]) => {
+    const contents = groups.flatMap(octeNames => {
       const officialPages = octeNames.map(name => themes.find(t => t.title === name)).filter(Boolean).map(t => ({
         title: t.title,
         html: `${warning}<section class="octe-theme"><div class="octe-badge">SOURCE OFFICIELLE OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`
       }));
-      const extraPages = portalNames.map(name => ({ name, html: portalByTheme.get(name) })).filter(p => p.html).map(p => ({ title: `${p.name} · complément du portail`, html: p.html }));
-      return [...officialPages, ...extraPages];
+      return officialPages;
     });
-    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE ENRICHI</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE relues à la source et complétées par les indicateurs du portail communal.</span><div class="cover-keyfigures">${keyValues.map((k, i) => `<div style="--accent:${['#ffca00','#6dd5a0','#a8b8ff'][i]}"><i></i><b>${escapeHtml(k.value)}</b><small>${escapeHtml(k.label)}</small></div>`).join('')}</div></section><section class="method-box"><h2>Lecture du document</h2><p>Chaque page est consacrée à une thématique. Les blocs « OCTE » reprennent l’intégralité des informations disponibles dans la fiche officielle DDT 95 ; les autres blocs apportent les indicateurs complémentaires du portail.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
+    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE relues directement à la source.</span></section><section class="method-box"><h2>Lecture du document</h2><p>Chaque page est consacrée à une rubrique OCTE officielle, sans ajout des contenus détaillés du portail communal.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
     const pages = [cover, ...contents];
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length, i === 0 ? 'cover-page' : '')).join('');
   }
