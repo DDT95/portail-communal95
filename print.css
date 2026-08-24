@@ -50,10 +50,31 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-body{flex:1;min-height:0}
 .data-body .result-section{border:.3mm solid #d9deef;border-radius:4mm;padding:5mm 6mm;margin-bottom:4mm}
 .data-body .result-section h3{font-size:11.5pt;color:#000091;margin:0 0 3mm}
+.data-body .viz-section{--theme:#000091;--theme-soft:#eef0ff;position:relative;border-top:1.5mm solid var(--theme);background:linear-gradient(145deg,#fff 55%,var(--theme-soft))}
+.data-body .viz-demography{--theme:#e05a3f;--theme-soft:#fff1ed}
+.data-body .viz-housing{--theme:#7b4ab5;--theme-soft:#f5effc}
+.data-body .viz-land{--theme:#26875a;--theme-soft:#edf8f1}
+.data-body .viz-risks{--theme:#c43d4f;--theme-soft:#fff0f2}
+.data-body .viz-resources{--theme:#087e8b;--theme-soft:#eaf8f9}
+.data-body .viz-city{--theme:#c16914;--theme-soft:#fff5e8}
+.data-body .viz-governance{--theme:#3158a5;--theme-soft:#edf2fc}
+.data-body .viz-security{--theme:#5f6577;--theme-soft:#f2f3f6}
+.data-body .viz-section h3{color:var(--theme);display:flex;align-items:center;gap:2.5mm}
+.section-symbol{display:inline-grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:var(--theme);color:#fff;font-size:8pt;flex:none}
 .data-body .data-grid>div{display:flex;justify-content:space-between;gap:6mm;padding:2mm 0;border-top:.2mm solid #eee;font-size:9pt}
 .data-body .data-grid dt{color:#777;margin:0}
 .data-body .data-grid dd{margin:0;font-weight:700;text-align:right}
+.data-body .data-grid>div:has(.value-meter){display:grid;grid-template-columns:1fr auto;column-gap:5mm}
+.value-meter{display:block;grid-column:1/-1;height:1.5mm;border-radius:2mm;background:#e1e3eb;overflow:hidden}
+.value-meter span{display:block;height:100%;border-radius:2mm;background:var(--theme)}
+.viz-key .data-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2mm}
+.viz-key .data-grid>div{display:block;padding:3mm;border:0;border-radius:2.5mm;background:var(--theme-soft)}
+.viz-key .data-grid dt,.viz-key .data-grid dd{text-align:left}
+.viz-key .data-grid dd{margin-top:1mm;color:var(--theme);font-size:12pt}
 .data-body .risque-pill{display:inline-flex;padding:1.8mm 3.5mm;margin:0 2mm 2mm 0;border-radius:6mm;background:#fff4ef;border:.2mm solid #f0c9b3;font-size:8pt;color:#8a3a12;font-weight:700}
+.viz-risks .risque-pill:nth-child(3n+1){background:#ffe8e3;border-color:#ef9b89;color:#942f1f}
+.viz-risks .risque-pill:nth-child(3n+2){background:#fff1d8;border-color:#e8b65f;color:#84510a}
+.viz-risks .risque-pill:nth-child(3n){background:#f2eafa;border-color:#b99ad8;color:#663792}
 .data-body .risque-pill.none{background:#f2f4f8;border-color:#d9deef;color:#555}
 .data-body .source-note{font-size:7.5pt;color:#777;margin:3mm 0 0}
 .data-body .source-note a{color:#000091}
@@ -98,21 +119,26 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .data-page-head{margin-bottom:3mm;padding-bottom:2mm}
 .summary-page .data-page-head img{width:13mm}
 .summary-page .data-page-head strong{font-size:11pt}
-.summary-hero{padding:5mm 7mm;margin-bottom:3mm;background:#000091;color:#fff;border-radius:3mm}
+.summary-hero{padding:3.5mm 6mm;margin-bottom:2mm;background:#000091;color:#fff;border-radius:3mm}
 .summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
 .summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
 .summary-hero span{display:block;margin-top:1mm;font-size:8pt}
-.summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:2.2mm;padding:2.2mm 3.5mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
+.summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:1.5mm;padding:1.5mm 3mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
 .summary-governance h2{margin:0;color:#000091;font-size:8pt;text-transform:uppercase;letter-spacing:.05em}
 .summary-governance>div{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
 .summary-governance>div>div{min-width:0}
 .summary-governance span,.summary-governance b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
 .summary-governance b{margin-top:.5mm;font-size:6.3pt;color:#10104b}
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.2mm}
-.summary-grid .result-section{padding:2.8mm 3.5mm;margin:0;border-radius:2.5mm;break-inside:avoid}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm}
+.summary-grid .result-section{padding:2mm 2.8mm;margin:0;border-radius:2.5mm;break-inside:avoid}
 .summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
-.summary-grid .data-grid>div{padding:.8mm 0;font-size:6.7pt;gap:3mm}
+.summary-grid .data-grid>div{padding:.5mm 0;font-size:6.5pt;gap:3mm}
+.summary-grid .section-symbol{width:4.5mm;height:4.5mm;font-size:5pt}
+.summary-grid .viz-key .data-grid{gap:1mm}
+.summary-grid .viz-key .data-grid>div{padding:1.4mm}
+.summary-grid .viz-key .data-grid dd{font-size:8pt}
+.summary-grid .value-meter{height:.7mm}
 .summary-grid .risque-pill{font-size:6pt;padding:.8mm 1.5mm;margin:0 .8mm .8mm 0}
 .summary-grid .fiche-subhead{font-size:6pt;margin:1.5mm 0 .8mm}
 .summary-grid .donut-wrap{gap:2mm;margin:0}

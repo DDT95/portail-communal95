@@ -137,10 +137,35 @@
   }
 
   // ---------- Fiches communales A4 ----------
+  function decoratePortalSection(section) {
+    const title = section.querySelector('h3')?.textContent || '';
+    const themes = {
+      'Chiffres clés': ['key', '◆'], 'Élus et gouvernance': ['governance', '◎'], 'Sécurité': ['security', '◈'],
+      'Démographie, revenus et emploi': ['demography', '●'], 'Logement': ['housing', '⌂'],
+      'Occupation du sol (MOS 2025)': ['land', '◒'], 'Risques majeurs recensés': ['risks', '△'],
+      'Artificialisation, eau et énergie': ['resources', '≈'], 'Politique de la ville': ['city', '◇']
+    };
+    const [theme, symbol] = themes[title] || ['default', '•'];
+    section.dataset.sectionTitle = title;
+    section.classList.add('viz-section', `viz-${theme}`);
+    const heading = section.querySelector('h3');
+    if (heading && !heading.querySelector('.section-symbol')) heading.insertAdjacentHTML('afterbegin', `<span class="section-symbol" aria-hidden="true">${symbol}</span>`);
+    section.querySelectorAll('.data-grid>div').forEach((row, index) => {
+      row.style.setProperty('--row-index', index);
+      const value = row.querySelector('dd')?.textContent || '';
+      const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
+      if (match && !row.querySelector('.value-meter')) {
+        const pct = Math.max(0, Math.min(100, Number(match[1].replace(',', '.'))));
+        row.insertAdjacentHTML('beforeend', `<i class="value-meter" aria-hidden="true"><span style="width:${pct}%"></span></i>`);
+      }
+    });
+    return section;
+  }
+
   function portalSections() {
     const srcHost = document.getElementById('drawer-body-src');
     srcHost.innerHTML = opener?.document.getElementById('drawer-body')?.innerHTML || snapshot?.drawerHtml || '';
-    return Array.from(srcHost.children);
+    return Array.from(srcHost.children).map(decoratePortalSection);
   }
 
   function pageHtml(title, content, index, total, className = '') {
@@ -154,12 +179,12 @@
   function buildSynthese() {
     const sections = portalSections();
     const wanted = ['Chiffres clés', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Risques majeurs recensés', 'Artificialisation, eau et énergie'];
-    const selected = sections.filter(s => wanted.includes(s.querySelector('h3')?.textContent || '')).map(s => {
+    const selected = sections.filter(s => wanted.includes(s.dataset.sectionTitle || '')).map(s => {
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
       return clone.outerHTML;
     });
-    const governance = sections.find(s => s.querySelector('h3')?.textContent === 'Élus et gouvernance');
+    const governance = sections.find(s => s.dataset.sectionTitle === 'Élus et gouvernance');
     const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
     const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid">${selected.join('')}</div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
     document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
@@ -196,7 +221,7 @@
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
     const portal = portalSections();
-    const portalByTheme = new Map(portal.map(s => [s.querySelector('h3')?.textContent || '', s.outerHTML]));
+    const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const groups = [
       ['Données générales', 'Déclinaison du SDRIF-E'],
