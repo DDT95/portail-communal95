@@ -1,12 +1,16 @@
 (function () {
   const opener = window.opener;
-  const app = opener && opener.pcApp;
+  let app = opener && opener.pcApp;
+  let snapshot = null;
+  try { snapshot = JSON.parse(localStorage.getItem('pc-export-snapshot') || 'null'); } catch {}
+  if (!app && snapshot) app = { state: snapshot.state, escapeHtml: value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), formatNumber: value => Number(value).toLocaleString('fr-FR'), octeUrl: () => snapshot.octeUrl };
   if (!app) {
     document.body.innerHTML = '<p style="padding:40px;font:16px Marianne,Arial,sans-serif">Cette page s’ouvre depuis le bouton d’export de la fiche communale.</p>';
     return;
   }
   const { state, MOS_LABELS, mosColor, PUBLIC_LAND_COLORS, roadStyle, escapeHtml, formatNumber } = app;
-  const mode = new URLSearchParams(location.search).get('mode') === 'fiche' ? 'fiche' : 'carte';
+  const requestedMode = new URLSearchParams(location.search).get('mode');
+  const mode = ['complete', 'synthese'].includes(requestedMode) ? requestedMode : 'carte';
   const statusEl = document.getElementById('pdfStatus');
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -132,69 +136,87 @@
     });
   }
 
-  // ---------- Fiche communale (page(s) A4) ----------
-  function buildFiche() {
+  // ---------- Fiches communales A4 ----------
+  function portalSections() {
     const srcHost = document.getElementById('drawer-body-src');
-    srcHost.innerHTML = opener.document.getElementById('drawer-body').innerHTML;
-    if (app.octeUrl) {
-      const octeBlock = document.createElement('div');
-      octeBlock.className = 'data-octe';
-      octeBlock.innerHTML = `<strong>Fiche officielle complète (OCTE)</strong> — pour l’ensemble des indicateurs réglementaires et fonciers (SRHH, PLH, SDRIF-E, gestion de l’eau, démarches territoriales…), consultez la fiche OCTE éditée par la DDT du Val-d’Oise : <a href="${app.octeUrl()}" target="_blank" rel="noreferrer">${escapeHtml(state.nom)}.pdf ↗</a>`;
-      srcHost.appendChild(octeBlock);
-    }
-    const sections = Array.from(srcHost.children);
-    const footText = `Fiche générée le ${today} · Portail communal · DDT du Val-d’Oise`;
+    srcHost.innerHTML = opener?.document.getElementById('drawer-body')?.innerHTML || snapshot?.drawerHtml || '';
+    return Array.from(srcHost.children);
+  }
 
-    // Mesure la hauteur de chaque section pour répartir sur autant de pages
-    // A4 que nécessaire, sans jamais couper une section en deux — remplace
-    // le découpage brutal au pixel qui tranchait le texte en plein milieu.
-    const mmTest = document.createElement('div');
-    mmTest.style.cssText = 'position:absolute;visibility:hidden;width:100mm';
-    document.body.appendChild(mmTest);
-    const pxPerMm = mmTest.offsetWidth / 100;
-    document.body.removeChild(mmTest);
-    const maxHeightPx = pxPerMm * 289; // 297mm - marge de sécurité ~8mm
+  function pageHtml(title, content, index, total, className = '') {
+    return `<div class="data-page ${className}" id="dataPage-${index}">
+      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(title)}</strong></div></header>
+      <div class="data-body">${content}</div>
+      <footer class="data-foot"><span>${escapeHtml(state.nom)} · code INSEE ${escapeHtml(state.code || '')}</span><span>${index + 1}/${total} · ${today}</span></footer>
+    </div>`;
+  }
 
-    const measurePage = document.createElement('div');
-    measurePage.className = 'data-page';
-    measurePage.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;height:auto';
-    measurePage.innerHTML = '<header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span></span><strong></strong></div></header><div id="measureBody"></div>';
-    document.body.appendChild(measurePage);
-    const measureBody = measurePage.querySelector('#measureBody');
-
-    const pages = [];
-    let current = [];
-    sections.forEach(sec => {
-      const clone = sec.cloneNode(true);
-      measureBody.appendChild(clone);
-      if (measurePage.scrollHeight > maxHeightPx && current.length > 0) {
-        measureBody.removeChild(clone);
-        pages.push(current);
-        current = [sec];
-        measureBody.innerHTML = '';
-        measureBody.appendChild(clone);
-      } else {
-        current.push(sec);
-      }
+  function buildSynthese() {
+    const sections = portalSections();
+    const wanted = ['Chiffres clés', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Risques majeurs recensés', 'Artificialisation, eau et énergie'];
+    const selected = sections.filter(s => wanted.includes(s.querySelector('h3')?.textContent || '')).map(s => {
+      const clone = s.cloneNode(true);
+      clone.querySelectorAll('.source-note').forEach(n => n.remove());
+      return clone.outerHTML;
     });
-    if (current.length) pages.push(current);
-    document.body.removeChild(measurePage);
+    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section><div class="summary-grid">${selected.join('')}</div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
+    document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
+  }
 
-    const container = document.getElementById('dataPages');
-    container.innerHTML = pages.map((pageSections, i) => `
-      <div class="data-page" id="dataPage-${i}">
-        <header class="data-page-head">
-          <img src="prefet-val-doise.svg" alt="">
-          <div>
-            <span>PORTAIL COMMUNAL · VAL-D’OISE</span>
-            <strong>${escapeHtml(state.nom || 'Commune')}</strong>
-            ${pages.length > 1 ? `<em>Fiche communale — page ${i + 1}/${pages.length}</em>` : ''}
-          </div>
-        </header>
-        <div class="data-body">${pageSections.map(s => s.outerHTML).join('')}</div>
-        ${i === pages.length - 1 ? `<p class="data-foot">${escapeHtml(footText)}</p>` : ''}
-      </div>
-    `).join('');
+  async function readOcteThemes() {
+    if (!window.pdfjsLib || !app.octeUrl) throw new Error('Lecteur OCTE indisponible');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await window.pdfjsLib.getDocument({ url: app.octeUrl(), withCredentials: false }).promise;
+    const pages = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const text = await (await pdf.getPage(p)).getTextContent();
+      const rows = new Map();
+      text.items.forEach(item => {
+        const y = Math.round(item.transform[5] / 3) * 3;
+        if (!rows.has(y)) rows.set(y, []);
+        rows.get(y).push({ x: item.transform[4], text: item.str });
+      });
+      pages.push([...rows.entries()].sort((a, b) => b[0] - a[0]).map(([, items]) => items.sort((a, b) => a.x - b.x).map(i => i.text).join('  ').trim()).filter(Boolean));
+    }
+    const headings = ['Données générales', 'Occupation du sol communal', 'Indicateurs socio-démographiques', 'Déclinaison du SDRIF-E', 'Développement économique', 'Espaces Naturels Agricoles et forestiers', 'Habitat logements', 'Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique', 'Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores', 'Démarches territoriales'];
+    const themes = [];
+    pages.flat().forEach(line => {
+      const heading = headings.find(h => line.toLocaleLowerCase('fr').includes(h.toLocaleLowerCase('fr')));
+      if (heading) themes.push({ title: heading, lines: [] });
+      else if (themes.length && !/Outil de connaissance territoriale|Édition du|DDT du Val-d’Oise|secret statistique|Pour la CARPF/.test(line)) themes.at(-1).lines.push(line);
+    });
+    return themes.filter(t => t.lines.length);
+  }
+
+  async function buildComplete() {
+    statusEl.textContent = 'Vérification des données OCTE à la source…';
+    let themes = [];
+    let warning = '';
+    try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
+    const portal = portalSections();
+    const portalByTheme = new Map(portal.map(s => [s.querySelector('h3')?.textContent || '', s.outerHTML]));
+    const keySection = portal.find(s => s.querySelector('h3')?.textContent === 'Chiffres clés');
+    const keyValues = keySection ? [...keySection.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => ({ label: row.querySelector('dt')?.textContent || '', value: row.querySelector('dd')?.textContent || '' })) : [];
+    const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
+    const groups = [
+      ['Cadre territorial et planification', ['Données générales', 'Déclinaison du SDRIF-E'], ['Chiffres clés', 'Élus et gouvernance']],
+      ['Population, habitat et cadre de vie', ['Indicateurs socio-démographiques', 'Habitat logements'], ['Démographie, revenus et emploi', 'Logement']],
+      ['Économie, foncier et occupation du sol', ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
+      ['Mobilités, eau et transition énergétique', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
+      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés']],
+      ['Projets et démarches territoriales', ['Démarches territoriales'], ['Politique de la ville', 'Sécurité']]
+    ];
+    const contents = groups.flatMap(([title, octeNames, portalNames]) => {
+      const officialPages = octeNames.map(name => themes.find(t => t.title === name)).filter(Boolean).map(t => ({
+        title: t.title,
+        html: `${warning}<section class="octe-theme"><div class="octe-badge">SOURCE OFFICIELLE OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`
+      }));
+      const extraPages = portalNames.map(name => ({ name, html: portalByTheme.get(name) })).filter(p => p.html).map(p => ({ title: `${p.name} · complément du portail`, html: p.html }));
+      return [...officialPages, ...extraPages];
+    });
+    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE ENRICHI</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE relues à la source et complétées par les indicateurs du portail communal.</span><div class="cover-keyfigures">${keyValues.map((k, i) => `<div style="--accent:${['#ffca00','#6dd5a0','#a8b8ff'][i]}"><i></i><b>${escapeHtml(k.value)}</b><small>${escapeHtml(k.label)}</small></div>`).join('')}</div></section><section class="method-box"><h2>Lecture du document</h2><p>Chaque page est consacrée à une thématique. Les blocs « OCTE » reprennent l’intégralité des informations disponibles dans la fiche officielle DDT 95 ; les autres blocs apportent les indicateurs complémentaires du portail.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
+    const pages = [cover, ...contents];
+    document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length, i === 0 ? 'cover-page' : '')).join('');
   }
 
   async function buildPdf() {
@@ -212,15 +234,15 @@
       const dataPages = Array.from(document.querySelectorAll('#dataPages .data-page'));
       doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       for (let i = 0; i < dataPages.length; i++) {
-        const canvas = await html2canvas(dataPages[i], { scale: 2.2, useCORS: true, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(dataPages[i], { scale: 1.65, useCORS: true, backgroundColor: '#ffffff' });
         if (i > 0) doc.addPage('a4', 'portrait');
-        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
       }
     }
     const blobUrl = URL.createObjectURL(doc.output('blob'));
     window.location.replace(blobUrl);
   }
 
-  const ready = mode === 'carte' ? buildCarte() : (buildFiche(), new Promise(r => setTimeout(r, 300)));
+  const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => new Promise(r => setTimeout(r, 500)));
   ready.then(() => buildPdf()).catch(err => { console.error(err); statusEl.textContent = 'La génération du PDF a échoué. Réessayez depuis la fiche.'; });
 })();

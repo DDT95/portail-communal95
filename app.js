@@ -613,8 +613,8 @@ function renderFicheDrawer(open) {
     ${territoireRows.length ? `<section class="result-section"><h3>Artificialisation, eau et énergie</h3><dl class="data-grid">${territoireRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Cerema · Hub’Eau · Agence ORE — voir les lectures <a href="https://ddt95.github.io/artificialisation-zan95/" target="_blank" rel="noreferrer">ZAN</a>, <a href="https://ddt95.github.io/eau95/" target="_blank" rel="noreferrer">Eau</a> et <a href="https://ddt95.github.io/transition-energetique95/" target="_blank" rel="noreferrer">Transition énergétique</a> pour le détail.</p></section>` : ''}
     <section class="result-section"><h3>Politique de la ville</h3><dl class="data-grid">${villeRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">ANCT — quartiers prioritaires de la politique de la ville.</p></section>
   `;
-  $('drawer-actions').innerHTML = `<button id="drawer-pdf" type="button">Fiche officielle PDF (OCTE)</button>`;
-  $('drawer-pdf').onclick = () => window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');
+  $('drawer-actions').innerHTML = `<button id="drawer-pdf" type="button">Exporter la fiche communale</button>`;
+  $('drawer-pdf').onclick = () => $('exportDialog').showModal();
 
   if (open) { $('drawer').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false'); }
 }
@@ -1306,13 +1306,18 @@ exportDialog.addEventListener('click', e => { if (e.target === exportDialog) exp
 function openPrintPage(mode) {
   exportDialog.close();
   renderFicheDrawer(true);
+  if (mode !== 'carte') {
+    localStorage.setItem('pc-export-snapshot', JSON.stringify({
+      state: { nom: state.nom, code: state.code },
+      drawerHtml: $('drawer-body').innerHTML,
+      octeUrl: `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`
+    }));
+  }
   window.open(`print.html?mode=${mode}`, '_blank');
 }
 
 $('exportMap').addEventListener('click', () => openPrintPage('carte'));
-$('exportOcte').addEventListener('click', () => {
-  exportDialog.close();
-  window.open(`${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`, '_blank', 'noopener,noreferrer');
-});
+$('exportOcte').addEventListener('click', () => openPrintPage('complete'));
+$('exportSummary').addEventListener('click', () => openPrintPage('synthese'));
 
 window.pcApp = { state, MOS_LABELS, PUBLIC_LAND_COLORS, mosColor, roadStyle, escapeHtml, formatNumber, octeUrl: () => `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf` };

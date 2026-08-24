@@ -8,7 +8,7 @@
   <title>Portail communal · Val-d’Oise</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <a class="skip-link" href="#map">Aller à la carte</a>
@@ -99,10 +99,11 @@
   <button class="dialog-x" id="closeExport" type="button" aria-label="Fermer">×</button>
   <small>EXPORT À LA DEMANDE</small>
   <h2>Que souhaitez-vous faire ?</h2>
-  <p>Deux formats au choix, générés à partir des données actuellement affichées sur la fiche.</p>
-  <div class="export-choices export-choices-2">
+  <p>Trois exports adaptés à votre besoin, générés avec les données de la fiche et les informations OCTE vérifiées à la source.</p>
+  <div class="export-choices export-choices-3">
     <button id="exportMap" type="button" class="export-choice"><i class="export-choice-icon" aria-hidden="true">🗺️</i><b>Carte DDT</b><span>Carte A3 mise en page, légende et échelle — au format DDT du Val-d’Oise.</span></button>
-    <button id="exportOcte" type="button" class="export-choice"><i class="export-choice-icon" aria-hidden="true">🏛️</i><b>Fiche OCTE</b><span>Le document officiel édité par la DDT 95, avec les indicateurs réglementaires détaillés.</span></button>
+    <button id="exportOcte" type="button" class="export-choice"><i class="export-choice-icon" aria-hidden="true">🏛️</i><b>Fiche communale complète</b><span>Dossier A4 exhaustif par thématiques : données OCTE vérifiées et indicateurs du portail.</span></button>
+    <button id="exportSummary" type="button" class="export-choice"><i class="export-choice-icon" aria-hidden="true">📄</i><b>Fiche synthétique</b><span>L’essentiel de la commune sur une seule page A4, lisible et prêt à partager.</span></button>
   </div>
 </dialog>
 
@@ -110,6 +111,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>

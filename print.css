@@ -3,7 +3,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 
-.pdf-status{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;background:rgba(15,20,35,.92);color:#fff;font-size:15px;font-weight:700;letter-spacing:.02em}
+.pdf-status{position:fixed;right:18px;top:18px;z-index:5000;padding:12px 16px;border-radius:10px;background:#000091;color:#fff;font-size:12px;font-weight:700;letter-spacing:.02em;box-shadow:0 8px 28px #0005}
 .pdf-status.done{display:none}
 
 .print-page{width:420mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;padding:6mm 8mm 4mm}
@@ -70,10 +70,54 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-body .compare-bar-row>div:first-child{display:flex;justify-content:space-between;margin-bottom:.6mm;color:#555}
 .data-body .compare-bar-track{height:2mm;border-radius:1.5mm;background:#eef0f7;overflow:hidden}
 .data-body .compare-bar-fill{height:100%;border-radius:1.5mm;background:#000091}
-.data-octe{margin-top:1mm;padding:4.5mm 6mm;border:.3mm dashed #000091;border-radius:4mm;font-size:8.5pt;color:#333}
-.data-octe strong{color:#000091}
-.data-octe a{color:#000091;font-weight:700}
-.data-foot{margin-top:4mm;font-size:7.5pt;color:#888;flex:none}
+.data-foot{margin-top:4mm;padding-top:2mm;border-top:.2mm solid #d9deef;font-size:7.5pt;color:#666;flex:none;display:flex;justify-content:space-between}
+
+.octe-theme{margin-bottom:4mm;break-inside:avoid}
+.octe-badge{display:inline-block;margin-bottom:3mm;padding:1.5mm 2.5mm;border-radius:4mm;background:#eef0ff;color:#000091;font-size:6.5pt;font-weight:700;letter-spacing:.06em}
+.octe-theme h2{margin:0 0 2mm;padding:2.2mm 3mm;background:#eef0ff;border-left:1.2mm solid #000091;color:#000091;font-size:10pt}
+.octe-lines{columns:2;column-gap:7mm;column-rule:.2mm solid #e3e5ef}
+.octe-lines p{margin:0 0 .65mm;padding:1mm 1.4mm;break-inside:avoid;font-size:6.35pt;line-height:1.28;color:#252535;border-left:.5mm solid #dfe2f2;background:#f8f9fc}
+.octe-lines p:nth-child(3n+1){border-left-color:#000091}
+.data-warning{padding:3mm;background:#fff4e5;border-left:1mm solid #e4794a;font-size:8pt}
+.complete-cover{min-height:105mm;padding:18mm 12mm;background:linear-gradient(145deg,#000091,#3a3a9f);color:#fff;display:flex;flex-direction:column;justify-content:center;border-radius:4mm}
+.complete-cover p{font-size:8pt;letter-spacing:.13em;font-weight:700;margin:0 0 7mm}
+.complete-cover h1{font-size:31pt;line-height:1.05;margin:0 0 4mm}
+.complete-cover strong{font-size:11pt;margin-bottom:11mm}
+.complete-cover span{font-size:11pt;line-height:1.5;max-width:135mm}
+.cover-keyfigures{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:12mm}
+.cover-keyfigures div{min-width:0;padding:4mm;background:#ffffff12;border:.25mm solid #ffffff44;border-radius:3mm}
+.cover-keyfigures i{display:block;width:100%;height:1.5mm;margin-bottom:3mm;border-radius:2mm;background:var(--accent)}
+.cover-keyfigures b,.cover-keyfigures small{display:block}
+.cover-keyfigures b{font-size:13pt;line-height:1.15;color:#fff}
+.cover-keyfigures small{margin-top:1mm;font-size:7pt;color:#e4e4ff}
+.method-box{margin-top:9mm;padding:7mm;border:.3mm solid #c7c9e2;border-radius:3mm;color:#333}
+.method-box h2{margin:0 0 3mm;color:#000091;font-size:12pt}
+.method-box p{font-size:9pt;line-height:1.55;margin:2mm 0}
+
+.summary-page{padding:9mm 11mm}
+.summary-page .data-page-head{margin-bottom:3mm;padding-bottom:2mm}
+.summary-page .data-page-head img{width:13mm}
+.summary-page .data-page-head strong{font-size:11pt}
+.summary-hero{padding:5mm 7mm;margin-bottom:3mm;background:#000091;color:#fff;border-radius:3mm}
+.summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
+.summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
+.summary-hero span{display:block;margin-top:1mm;font-size:8pt}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.2mm}
+.summary-grid .result-section{padding:2.8mm 3.5mm;margin:0;border-radius:2.5mm;break-inside:avoid}
+.summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
+.summary-grid .data-grid>div{padding:.8mm 0;font-size:6.7pt;gap:3mm}
+.summary-grid .risque-pill{font-size:6pt;padding:.8mm 1.5mm;margin:0 .8mm .8mm 0}
+.summary-grid .fiche-subhead{font-size:6pt;margin:1.5mm 0 .8mm}
+.summary-grid .donut-wrap{gap:2mm;margin:0}
+.summary-grid .donut{width:15mm;height:15mm;box-shadow:inset 0 0 0 3.7mm #fff,0 0 0 .2mm #eee}
+.summary-grid .donut-legend{gap:.5mm}
+.summary-grid .donut-legend-row{font-size:5.8pt;gap:1mm}
+.summary-grid .donut-legend-row i{width:1.6mm;height:1.6mm}
+.summary-grid .donut-legend-row b{font-size:5.8pt}
+.summary-grid .compare-bars{gap:.8mm}
+.summary-grid .compare-bar-row{font-size:5.8pt}
+.summary-grid .compare-bar-track{height:1.3mm}
+.summary-source{font-size:6pt;color:#666;margin:2.5mm 0 0}
 
 @media print{
   @page{size:A3 landscape;margin:0}
