@@ -145,11 +145,9 @@
       'Occupation du sol (MOS 2025)': ['land', '◒'], 'Risques majeurs recensés': ['risks', '△'],
       'Artificialisation, eau et énergie': ['resources', '≈'], 'Politique de la ville': ['city', '◇']
     };
-    const [theme, symbol] = themes[title] || ['default', '•'];
+    const [theme] = themes[title] || ['default'];
     section.dataset.sectionTitle = title;
     section.classList.add('viz-section', `viz-${theme}`);
-    const heading = section.querySelector('h3');
-    if (heading && !heading.querySelector('.section-symbol')) heading.insertAdjacentHTML('afterbegin', `<span class="section-symbol" aria-hidden="true">${symbol}</span>`);
     section.querySelectorAll('.data-grid>div').forEach((row, index) => {
       row.style.setProperty('--row-index', index);
       const value = row.querySelector('dd')?.textContent || '';
@@ -179,16 +177,31 @@
   function buildSynthese() {
     const sections = portalSections();
     const wanted = ['Chiffres clés', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Risques majeurs recensés', 'Artificialisation, eau et énergie'];
+    const findPercentage = (sectionTitle, label) => {
+      const section = sections.find(s => s.dataset.sectionTitle === sectionTitle);
+      const row = section ? [...section.querySelectorAll('.data-grid>div')].find(r => r.querySelector('dt')?.textContent.includes(label)) : null;
+      const match = row?.querySelector('dd')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
+      return match ? Number(match[1].replace(',', '.')) : null;
+    };
+    const profileValues = [
+      ['Pauvreté', findPercentage('Démographie, revenus et emploi', 'pauvreté')],
+      ['Chômage', findPercentage('Démographie, revenus et emploi', 'chômage')],
+      ['Logement social', findPercentage('Logement', 'logement social')],
+      ['Vacance', findPercentage('Logement', 'vacants')],
+      ['Maisons', findPercentage('Logement', 'Maisons')],
+      ['Appartements', findPercentage('Logement', 'Appartements')]
+    ].filter(([, value]) => value != null);
     const selected = sections.filter(s => wanted.includes(s.dataset.sectionTitle || '')).map(s => {
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
+      if (s.dataset.sectionTitle === 'Chiffres clés' && profileValues.length) clone.insertAdjacentHTML('beforeend', `<div class="profile-chart"><h4>Profil social et résidentiel</h4><div>${profileValues.map(([label, value]) => `<figure><div><i style="height:${value}%"></i></div><b>${value.toFixed(1)} %</b><figcaption>${escapeHtml(label)}</figcaption></figure>`).join('')}</div></div>`);
       return clone.outerHTML;
     });
     const governance = sections.find(s => s.dataset.sectionTitle === 'Élus et gouvernance');
     const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
     const leftColumn = [selected[0], selected[2], selected[4]].filter(Boolean).join('');
     const rightColumn = [selected[1], selected[3], selected[5]].filter(Boolean).join('');
-    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid"><div class="summary-column">${leftColumn}</div><div class="summary-column">${rightColumn}</div></div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
+    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid"><div class="summary-column">${leftColumn}</div><div class="summary-column">${rightColumn}</div></div>`;
     document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
   }
 
@@ -248,9 +261,8 @@
       ['Risques et vulnérabilités territoriales', ['Risques majeurs recensés']],
       ['Eau, énergie et politique de la ville', ['Artificialisation, eau et énergie', 'Politique de la ville']]
     ].map(([title, names]) => ({ title, html: names.map(name => portalByTheme.get(name)).filter(Boolean).join('') })).filter(page => page.html);
-    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE, statistiques publiques et visualisations territoriales.</span></section><section class="method-box"><h2>Lecture du document</h2><p>La première partie reprend les rubriques OCTE officielles. La seconde les étaye avec les données Insee et les indicateurs thématiques du portail, présentés sous forme de chiffres clés et de graphiques.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes et sources propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
-    const pages = [cover, ...contents, ...enrichedPages];
-    document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length, i === 0 ? 'cover-page' : '')).join('');
+    const pages = [...contents, ...enrichedPages];
+    document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
   }
 
   async function buildPdf() {

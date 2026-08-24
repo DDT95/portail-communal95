@@ -43,7 +43,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 
 .data-page{width:210mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:12mm 14mm;overflow:hidden;display:flex;flex-direction:column}
 .data-page-head{display:flex;align-items:center;gap:6mm;padding-bottom:4mm;border-bottom:.5mm solid #000091;margin-bottom:5mm;flex:none}
-.data-page-head img{width:18mm;height:auto}
+.data-page-head img{width:24mm;height:auto}
 .data-page-head span{display:block;font-size:8pt;font-weight:700;letter-spacing:.06em;color:#000091}
 .data-page-head strong{display:block;font-size:17pt;color:#0d0d45;margin-top:1mm}
 .data-page-head em{display:block;font-style:normal;font-size:8pt;color:#888;margin-top:1mm}
@@ -59,8 +59,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-body .viz-city{--theme:#c16914;--theme-soft:#fff5e8}
 .data-body .viz-governance{--theme:#3158a5;--theme-soft:#edf2fc}
 .data-body .viz-security{--theme:#5f6577;--theme-soft:#f2f3f6}
-.data-body .viz-section h3{color:var(--theme);display:flex;align-items:center;gap:2.5mm}
-.section-symbol{display:inline-grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:var(--theme);color:#fff;font-size:8pt;flex:none}
+.data-body .viz-section h3{color:var(--theme)}
 .data-body .data-grid>div{display:flex;justify-content:space-between;gap:6mm;padding:2mm 0;border-top:.2mm solid #eee;font-size:9pt}
 .data-body .data-grid dt{color:#777;margin:0}
 .data-body .data-grid dd{margin:0;font-weight:700;text-align:right}
@@ -117,12 +116,11 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 
 .summary-page{padding:9mm 11mm}
 .summary-page .data-page-head{margin-bottom:3mm;padding-bottom:2mm}
-.summary-page .data-page-head img{width:13mm}
+.summary-page .data-page-head img{width:22mm}
 .summary-page .data-page-head strong{font-size:11pt}
 .summary-hero{padding:3.5mm 6mm;margin-bottom:2mm;background:#000091;color:#fff;border-radius:3mm}
 .summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
 .summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
-.summary-hero span{display:block;margin-top:1mm;font-size:8pt}
 .summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:1.5mm;padding:1.5mm 3mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
 .summary-governance h2{margin:0;color:#000091;font-size:8pt;text-transform:uppercase;letter-spacing:.05em}
 .summary-governance>div{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
@@ -135,11 +133,18 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-grid .result-section{padding:2mm 2.8mm;margin:0;border-radius:2.5mm;break-inside:avoid}
 .summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
 .summary-grid .data-grid>div{padding:.5mm 0;font-size:6.5pt;gap:3mm}
-.summary-grid .section-symbol{width:4.5mm;height:4.5mm;font-size:5pt}
 .summary-grid .viz-key .data-grid{gap:1mm}
 .summary-grid .viz-key .data-grid>div{padding:1.4mm}
 .summary-grid .viz-key .data-grid dd{font-size:8pt}
 .summary-grid .value-meter{height:.7mm}
+.profile-chart{margin-top:3mm;padding-top:2mm;border-top:.2mm solid #cfd3ea}
+.profile-chart h4{margin:0 0 2mm;color:#000091;font-size:6.5pt;text-transform:uppercase;letter-spacing:.05em}
+.profile-chart>div{display:grid;grid-template-columns:repeat(6,1fr);gap:1mm;align-items:end}
+.profile-chart figure{margin:0;text-align:center;min-width:0}
+.profile-chart figure>div{height:22mm;display:flex;align-items:flex-end;justify-content:center;background:#eef0f7;border-radius:1mm;overflow:hidden}
+.profile-chart figure i{display:block;width:70%;min-height:.8mm;background:linear-gradient(#6374d9,#000091);border-radius:1mm 1mm 0 0}
+.profile-chart b{display:block;margin-top:.8mm;font-size:5.5pt;color:#000091}
+.profile-chart figcaption{margin-top:.5mm;font-size:4.7pt;line-height:1.1;color:#666;overflow-wrap:anywhere}
 .summary-grid .risque-pill{font-size:6pt;padding:.8mm 1.5mm;margin:0 .8mm .8mm 0}
 .summary-grid .fiche-subhead{font-size:6pt;margin:1.5mm 0 .8mm}
 .summary-grid .donut-wrap{gap:2mm;margin:0}
