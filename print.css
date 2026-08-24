@@ -102,6 +102,13 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
 .summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
 .summary-hero span{display:block;margin-top:1mm;font-size:8pt}
+.summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:2.2mm;padding:2.2mm 3.5mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
+.summary-governance h2{margin:0;color:#000091;font-size:8pt;text-transform:uppercase;letter-spacing:.05em}
+.summary-governance>div{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+.summary-governance>div>div{min-width:0}
+.summary-governance span,.summary-governance b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
+.summary-governance b{margin-top:.5mm;font-size:6.3pt;color:#10104b}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.2mm}
 .summary-grid .result-section{padding:2.8mm 3.5mm;margin:0;border-radius:2.5mm;break-inside:avoid}
 .summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}

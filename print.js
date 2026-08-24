@@ -159,7 +159,9 @@
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
       return clone.outerHTML;
     });
-    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section><div class="summary-grid">${selected.join('')}</div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
+    const governance = sections.find(s => s.querySelector('h3')?.textContent === 'Élus et gouvernance');
+    const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
+    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1><span>Portrait territorial en un coup d’œil</span></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid">${selected.join('')}</div><p class="summary-source">Sources : Insee, Institut Paris Region, Géorisques, Cerema, Hub’Eau, Agence ORE, ANCT et DDT 95. Données disponibles au ${today}.</p>`;
     document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
   }
 
@@ -193,6 +195,8 @@
     let themes = [];
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
+    const portal = portalSections();
+    const portalByTheme = new Map(portal.map(s => [s.querySelector('h3')?.textContent || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const groups = [
       ['Données générales', 'Déclinaison du SDRIF-E'],
@@ -209,8 +213,16 @@
       }));
       return officialPages;
     });
-    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE relues directement à la source.</span></section><section class="method-box"><h2>Lecture du document</h2><p>Chaque page est consacrée à une rubrique OCTE officielle, sans ajout des contenus détaillés du portail communal.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
-    const pages = [cover, ...contents];
+    const enrichedPages = [
+      ['Gouvernance et services de sécurité', ['Chiffres clés', 'Élus et gouvernance', 'Sécurité']],
+      ['Portrait démographique, social et économique', ['Démographie, revenus et emploi']],
+      ['Habitat et statuts d’occupation', ['Logement']],
+      ['Occupation du sol et trajectoire foncière', ['Occupation du sol (MOS 2025)']],
+      ['Risques et vulnérabilités territoriales', ['Risques majeurs recensés']],
+      ['Eau, énergie et politique de la ville', ['Artificialisation, eau et énergie', 'Politique de la ville']]
+    ].map(([title, names]) => ({ title, html: names.map(name => portalByTheme.get(name)).filter(Boolean).join('') })).filter(page => page.html);
+    const cover = { title: 'Dossier communal complet', html: `<section class="complete-cover"><p>OUTIL DE CONNAISSANCE TERRITORIALE</p><h1>${escapeHtml(state.nom)}</h1><strong>Code INSEE ${escapeHtml(state.code || '')}</strong><span>Données officielles OCTE, statistiques publiques et visualisations territoriales.</span></section><section class="method-box"><h2>Lecture du document</h2><p>La première partie reprend les rubriques OCTE officielles. La seconde les étaye avec les données Insee et les indicateurs thématiques du portail, présentés sous forme de chiffres clés et de graphiques.</p><p>Source OCTE : DDT du Val-d’Oise, fiche consultée le ${today}. Les millésimes et sources propres à chaque indicateur sont indiqués dans les contenus.</p></section>` };
+    const pages = [cover, ...contents, ...enrichedPages];
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length, i === 0 ? 'cover-page' : '')).join('');
   }
 
