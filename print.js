@@ -10,6 +10,7 @@
   }
   const { state, MOS_LABELS, mosColor, PUBLIC_LAND_COLORS, roadStyle, escapeHtml, formatNumber } = app;
   const requestedMode = new URLSearchParams(location.search).get('mode');
+  const previewOnly = new URLSearchParams(location.search).get('preview') === '1';
   const mode = ['complete', 'synthese'].includes(requestedMode) ? requestedMode : 'carte';
   const statusEl = document.getElementById('pdfStatus');
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -182,6 +183,28 @@
           color: row.querySelector('i')?.style.background || '#d0702f'
         }));
         ageChart.outerHTML = `<div class="age-structure"><div class="age-stack">${ages.map(age => `<i style="width:${age.pct}%;background:${age.color}"></i>`).join('')}</div><div class="age-labels">${ages.map(age => `<div><i style="background:${age.color}"></i><span>${escapeHtml(age.label)}</span><b>${age.pct.toFixed(1)} %</b></div>`).join('')}</div></div>`;
+      }
+    }
+    if (title === 'Logement') {
+      const occupancy = section.querySelector('.donut-wrap');
+      if (occupancy) {
+        const shares = [...occupancy.querySelectorAll('.donut-legend-row')].map(row => ({
+          label: row.querySelector('span')?.textContent.trim() || '',
+          pct: row.querySelector('b')?.textContent.trim() || '',
+          color: row.querySelector('i')?.style.background || '#7b4ab5'
+        }));
+        occupancy.outerHTML = `<div class="occupancy-cards">${shares.map(item => `<div style="border-color:${item.color}"><b>${escapeHtml(item.pct)}</b><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
+      }
+      const pctRows = [...section.querySelectorAll('.data-grid>div')].map(row => {
+        const label = row.querySelector('dt')?.textContent.trim() || '';
+        const value = row.querySelector('dd')?.textContent.trim() || '';
+        const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
+        return { row, label, value: match ? Number(match[1].replace(',', '.')) : null };
+      }).filter(item => item.value != null);
+      if (pctRows.length) {
+        pctRows.forEach(item => item.row.remove());
+        const dotplot = `<div class="housing-dotplot"><div class="dotplot-axis"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 %</span></div>${pctRows.map(item => `<div class="dotplot-row"><span>${escapeHtml(item.label)}</span><div><i style="left:${Math.max(1, Math.min(99, item.value))}%"></i></div><b>${item.value.toFixed(1)} %</b></div>`).join('')}</div>`;
+        section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', dotplot);
       }
     }
     return section;
@@ -411,5 +434,5 @@
   }
 
   const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => initMiniMaps()).then(() => new Promise(r => setTimeout(r, 350)));
-  ready.then(() => buildPdf()).catch(err => { console.error(err); statusEl.textContent = 'La génération du PDF a échoué. Réessayez depuis la fiche.'; });
+  ready.then(() => previewOnly ? statusEl.classList.add('done') : buildPdf()).catch(err => { console.error(err); statusEl.textContent = 'La génération du PDF a échoué. Réessayez depuis la fiche.'; });
 })();
