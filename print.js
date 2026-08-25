@@ -203,7 +203,8 @@
         return { row, label, value: match ? Number(match[1].replace(',', '.')) : null };
       }).filter(item => item.value != null);
       allPctRows.forEach(item => item.row.remove());
-      const pctRows = allPctRows.filter(item => item.value > 0);
+      if (mode === 'complete') section.querySelectorAll('.data-grid>div').forEach(row => { if (/^Résidences principales$/i.test(row.querySelector('dt')?.textContent.trim() || '')) row.remove(); });
+      const pctRows = allPctRows.filter(item => item.value > 0 && (mode !== 'complete' || !/logement social|logements vacants/i.test(item.label)));
       if (pctRows.length) {
         const radials = `<div class="housing-radials">${pctRows.map(item => `<div><b>${item.value.toFixed(1)} %</b><span>${escapeHtml(item.label)}</span><i><em style="width:${item.value}%"></em></i></div>`).join('')}</div>`;
         section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', radials);
@@ -229,7 +230,7 @@
     const isSummary = className.includes('summary-page');
     const isOpening = !isSummary && index === 0;
     return `<div class="data-page ${className}" id="dataPage-${index}">
-      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(isSummary ? title : (isOpening ? state.nom : title))}</strong>${isSummary ? '' : (isOpening ? `<em>${escapeHtml(title)}</em>` : '')}</div></header>
+      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(isSummary ? title : (isOpening ? state.nom : title))}</strong>${isSummary ? '<em>Fiche synthétique</em>' : (isOpening ? `<em>${escapeHtml(title)}</em>` : '')}</div></header>
       <div class="data-body">${content}</div>
       <footer class="data-foot"><span>${escapeHtml(state.nom)} · code INSEE ${escapeHtml(state.code || '')}</span><span>${index + 1}/${total} · ${today}</span></footer>
     </div>`;
@@ -254,7 +255,7 @@
       }});
       const tiles = new GreyTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
       const boundary = L.geoJSON(state.contour, { style: { color: '#000091', weight: 3, opacity: 1, fillColor: '#6f78c8', fillOpacity: .16 } }).addTo(map);
-      const recenter = () => { map.invalidateSize(); const bounds = boundary.getBounds(); map.fitBounds(bounds, { paddingTopLeft: [28, 28], paddingBottomRight: [28, 28], animate: false }); map.panTo(bounds.getCenter(), { animate: false }); };
+      const recenter = () => { map.invalidateSize(); const bounds = boundary.getBounds(); const zoom = Math.max(6, map.getBoundsZoom(bounds, false, L.point(54, 54))); map.setView(bounds.getCenter(), zoom, { animate: false }); };
       recenter();
       let settled = false;
       const done = () => { if (!settled) { settled = true; setTimeout(() => { recenter(); resolve(); }, 250); } };
@@ -284,15 +285,18 @@
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
       if (s.dataset.sectionTitle === 'Chiffres clés') clone.insertAdjacentHTML('afterbegin', miniMapHtml());
-      if (s.dataset.sectionTitle === 'Chiffres clés' && profileValues.length) clone.insertAdjacentHTML('beforeend', `<div class="profile-chart"><h4>Profil social et résidentiel</h4><div>${profileValues.map(([label, value]) => `<figure><div><i style="height:${value}%"></i></div><b>${value.toFixed(1)} %</b><figcaption>${escapeHtml(label)}</figcaption></figure>`).join('')}</div></div>`);
+      if (s.dataset.sectionTitle === 'Démographie, revenus et emploi') {
+        [...clone.querySelectorAll('.data-grid>div')].slice(3).forEach(row => row.remove());
+        const familyTitle = [...clone.querySelectorAll('.fiche-subhead')].find(n => /ménages/i.test(n.textContent));
+        if (familyTitle) { familyTitle.nextElementSibling?.remove(); familyTitle.remove(); }
+      }
+      if (s.dataset.sectionTitle === 'Logement') clone.querySelector('.housing-radials')?.remove();
       return clone.outerHTML;
     });
     const governance = sections.find(s => s.dataset.sectionTitle === 'Élus et gouvernance');
     const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
-    const leftColumn = [selected[0], selected[2], selected[4]].filter(Boolean).join('');
-    const rightColumn = [selected[1], selected[3], selected[5]].filter(Boolean).join('');
-    const content = `<section class="summary-hero"><p>FICHE SYNTHÉTIQUE</p><h1>${escapeHtml(state.nom)}</h1></section>${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid"><div class="summary-column">${leftColumn}</div><div class="summary-column">${rightColumn}</div></div>`;
-    document.getElementById('dataPages').innerHTML = pageHtml('Synthèse communale', content, 0, 1, 'summary-page');
+    const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid">${selected.join('')}</div>`;
+    document.getElementById('dataPages').innerHTML = pageHtml(state.nom, content, 0, 1, 'summary-page');
   }
 
   async function readOcteThemes() {

@@ -109,7 +109,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .commune-map-card{display:block;height:100%;margin:0;padding:1.5mm;background:#f2f3f6;border-radius:2.5mm;overflow:hidden}
 .commune-mini-map{height:100%;min-height:38mm;background:#e6e8eb;border:.2mm solid #c6cad2;border-radius:1.5mm;overflow:hidden}
 .commune-mini-map .leaflet-tile-pane{filter:grayscale(1) contrast(.82) brightness(1.08);opacity:.82}
-.data-body .viz-key{display:grid;grid-template-columns:75mm 1fr;grid-template-rows:auto auto;gap:2mm 3mm}.data-body .viz-key>h3{grid-column:1/-1;grid-row:1}.data-body .viz-key>.commune-map-card{grid-column:1;grid-row:2}.data-body .viz-key>.data-grid{grid-column:2;grid-row:2;align-content:stretch}.data-body .viz-key>.profile-chart,.data-body .viz-key>.source-note{grid-column:1/-1}
+.data-body .viz-key{display:grid;grid-template-columns:68mm minmax(0,1fr);grid-template-rows:auto auto;gap:3mm 5mm}.data-body .viz-key>h3{grid-column:1/-1;grid-row:1}.data-body .viz-key>.commune-map-card{grid-column:1;grid-row:2}.data-body .viz-key>.data-grid{grid-column:2;grid-row:2;align-content:stretch;min-width:0}.data-body .viz-key>.profile-chart,.data-body .viz-key>.source-note{grid-column:1/-1}.data-body .viz-key .data-grid>div{min-width:0;padding:3.5mm}.data-body .viz-key .data-grid dt{font-size:8.5pt}.data-body .viz-key .data-grid dd{font-size:10.5pt;line-height:1.2;overflow-wrap:anywhere;word-break:normal}
 .viz-governance .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm}.data-body .viz-governance .data-grid>div{display:block;padding:2mm 2.5mm;border:0;border-left:.8mm solid var(--theme);background:#fff}.viz-governance .data-grid dt,.viz-governance .data-grid dd{text-align:left}.viz-governance .data-grid dd{margin-top:.8mm}.viz-governance .data-grid>div:last-child{grid-column:1/-1}
 .age-structure{margin:2mm 0 4mm}.age-stack{display:flex;height:10mm;border-radius:1.5mm;overflow:hidden}.age-stack i{display:block;height:100%}.age-labels{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;margin-top:2.5mm}.age-labels>div{display:grid;grid-template-columns:2.4mm 1fr auto;gap:1.5mm;align-items:center;font-size:8.5pt}.age-labels i{width:2.4mm;height:2.4mm;border-radius:50%}.age-labels span{color:#555}.age-labels b{color:#10104b;white-space:nowrap}
 .housing-donut{display:grid;grid-template-columns:43mm 1fr;align-items:center;gap:7mm;padding:5mm 6mm;border-radius:3mm;background:#fff}.housing-donut svg{width:40mm;height:40mm}.housing-donut .donut-legend{gap:2.5mm}.housing-donut .donut-legend-row{font-size:9pt}.housing-donut .donut-legend-row b{font-size:9pt}
@@ -169,7 +169,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 #dataPage-1 .result-section,#dataPage-2 .result-section,#dataPage-3 .octe-theme,#dataPage-3 .result-section,#dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-8 .result-section,#dataPage-9 .octe-theme,#dataPage-9 .result-section{margin-bottom:6mm}
 #dataPage-1 .viz-demography,#dataPage-2 .viz-housing,#dataPage-3 .octe-theme,#dataPage-3 .viz-land,#dataPage-4 .viz-economy,#dataPage-8 .octe-theme{padding:6mm 7mm}
 #dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-9 .octe-theme,#dataPage-9 .result-section{padding:4.5mm 5mm}
-#dataPage-9 .viz-risks{padding:5mm 6mm}#dataPage-9 .viz-security{padding:5mm 6mm}#dataPage-9 .viz-security .data-grid>div{padding:2mm 0;font-size:8.5pt}
+#dataPage-9 .data-body{display:flex;flex-direction:column;gap:7mm;padding:2mm 0 4mm}#dataPage-9 .octe-theme,#dataPage-9 .viz-risks,#dataPage-9 .viz-security{margin:0;padding:6mm 7mm}#dataPage-9 .viz-risks .risque-pill{padding:2.2mm 4mm;margin:0 2.5mm 2.5mm 0}#dataPage-9 .viz-security .data-grid>div{padding:2.8mm 0;font-size:8.8pt}#dataPage-9 .viz-security .source-note{margin-top:3mm}
 #dataPage-0 .result-section{padding:3mm 4mm;margin-bottom:2mm}
 #dataPage-0 .octe-theme{margin-top:1.5mm}
 .octe-badge{display:inline-block;margin-bottom:3mm;padding:1.5mm 2.5mm;border-radius:4mm;background:#eef0ff;color:#000091;font-size:6.5pt;font-weight:700;letter-spacing:.06em}
@@ -194,9 +194,9 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .method-box p{font-size:9pt;line-height:1.55;margin:2mm 0}
 
 .summary-page{padding:9mm 11mm}
-.summary-page .data-page-head{margin-bottom:2mm;padding-bottom:1.5mm}
-.summary-page .data-page-head img{width:22mm}
-.summary-page .data-page-head strong{font-size:11pt}
+.summary-page .data-page-head{margin-bottom:3mm;padding-bottom:2.5mm;align-items:center}
+.summary-page .data-page-head img{width:23mm}
+.summary-page .data-page-head>div{display:grid;grid-template-columns:auto 1fr;column-gap:5mm;align-items:baseline;flex:1}.summary-page .data-page-head span{grid-column:1/-1}.summary-page .data-page-head strong{font-size:19pt;margin-top:1.5mm}.summary-page .data-page-head em{font-size:8pt;color:#555;margin:0;text-transform:uppercase;letter-spacing:.08em}
 .summary-hero{padding:2.8mm 6mm;margin-bottom:1.5mm;background:#000091;color:#fff;border-radius:3mm}
 .summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
 .summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
@@ -207,15 +207,16 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-governance span,.summary-governance b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
 .summary-governance b{margin-top:.5mm;font-size:6.3pt;color:#10104b}
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1mm}
-.summary-column{display:flex;flex-direction:column;gap:1mm;min-width:0}
-.summary-grid .result-section{padding:1.7mm 2.5mm;margin:0;border-radius:2.5mm;break-inside:avoid}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "risks resources";gap:2.5mm;align-items:stretch}
+.summary-grid>[data-section-title="Chiffres clés"]{grid-area:key}.summary-grid>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}.summary-grid>[data-section-title="Logement"]{grid-area:housing}.summary-grid>[data-section-title="Occupation du sol (MOS 2025)"]{grid-area:land}.summary-grid>[data-section-title="Risques majeurs recensés"]{grid-area:risks}.summary-grid>[data-section-title="Artificialisation, eau et énergie"]{grid-area:resources}
+.summary-grid .result-section{padding:2.5mm 3mm;margin:0;border-radius:2.5mm;break-inside:avoid;min-width:0}
 .summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
 .summary-grid .data-grid>div{padding:.3mm 0;font-size:6.3pt;gap:3mm}
 .summary-grid .viz-key .data-grid{gap:1mm}
 .summary-grid .viz-key .data-grid>div{padding:1.4mm}
 .summary-grid .viz-key .data-grid dd{font-size:8pt}
-.summary-grid .viz-key{grid-template-columns:31mm 1fr;gap:.8mm}.summary-grid .commune-map-card{padding:.8mm}.summary-grid .commune-mini-map{height:16mm;min-height:16mm}.summary-grid .profile-chart figure>div{height:14mm}
+.summary-grid .viz-key{grid-template-columns:39mm 1fr;gap:2mm}.summary-grid .commune-map-card{padding:.8mm}.summary-grid .commune-mini-map{height:25mm;min-height:25mm}
+.summary-grid .housing-donut{grid-template-columns:27mm 1fr;gap:3mm;padding:2mm}.summary-grid .housing-donut svg{width:26mm;height:26mm}.summary-grid .housing-radials{display:none}
 .summary-grid .value-meter{height:.7mm}
 .profile-chart{margin-top:3mm;padding-top:2mm;border-top:.2mm solid #cfd3ea}
 .profile-chart h4{margin:0 0 2mm;color:#000091;font-size:6.5pt;text-transform:uppercase;letter-spacing:.05em}
