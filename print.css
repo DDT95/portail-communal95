@@ -432,13 +432,21 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .economy-context span{font-size:5.6pt}
 .summary-page .economy-context b{font-size:7.5pt}
 
-.territorial-reading{margin-top:var(--s1);padding:var(--s2) var(--s3);border:.25mm solid var(--line);border-radius:var(--radius);background:var(--paper)}
-.territorial-reading h2{margin:0 0 var(--s1);color:var(--blue);font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em}
+/* Lecture territoriale : un en-tête + deux colonnes (leviers / vigilances),
+   chaque repère en "métrique + explication" — mêmes jetons que le reste. */
+.territorial-reading{margin-top:var(--s2);padding:var(--s2) var(--s3);border:.25mm solid var(--line);border-radius:var(--radius);background:var(--paper)}
+.territorial-reading>header{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s1);padding-bottom:var(--s1);border-bottom:.2mm solid var(--line)}
+.territorial-reading h2{margin:0;color:var(--blue);font-size:9pt;font-weight:700;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.territorial-reading>header p{margin:0;color:var(--muted);font-size:6.8pt;line-height:1.3}
 .territorial-reading>div{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
-.territorial-reading article{padding-left:var(--s2);border-left:1mm solid var(--good)}
-.territorial-reading article+article{border-left-color:var(--warn)}
+.territorial-reading article{padding:var(--s1) var(--s2);border-top:1mm solid var(--good);border-radius:0 0 1.5mm 1.5mm;background:#fff}
+.territorial-reading article+article{border-top-color:var(--warn)}
 .territorial-reading h3{margin:0 0 1mm;font-size:8pt;color:var(--ink)}
-.territorial-reading p{margin:.6mm 0;font-size:7.5pt;line-height:1.3;color:var(--muted)}
+.territorial-reading article p{display:grid;grid-template-columns:16mm minmax(0,1fr);gap:var(--s1);align-items:baseline;margin:0;padding:1mm 0;border-top:.15mm solid var(--line-soft);font-size:7pt;line-height:1.3;color:var(--muted)}
+.territorial-reading article h3+p{border-top:0}
+.territorial-reading article strong{color:var(--good);font-size:8pt;font-weight:700;line-height:1.15}
+.territorial-reading article+article strong{color:var(--warn)}
+.territorial-reading article span{min-width:0}
 
 /* =====================================================================
    IMPRESSION

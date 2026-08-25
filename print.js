@@ -344,10 +344,11 @@
 
   function buildSynthese() {
     const sections = portalSections();
-    const wanted = ['Chiffres clés', 'Population et dynamiques sociales', 'Logement', 'Occupation du sol (MOS 2025)', 'Économie locale'];
+    const wanted = ['Chiffres clés', 'Population et dynamiques sociales', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Économie locale'];
+    const findSection = title => sections.find(s => s.dataset.sectionTitle === title) || (title === 'Population et dynamiques sociales' ? sections.find(s => s.dataset.sectionTitle === 'Démographie, revenus et emploi') : null);
     const findPercentage = (sectionTitle, label) => {
-      const section = sections.find(s => s.dataset.sectionTitle === sectionTitle);
-      const row = section ? [...section.querySelectorAll('.data-grid>div,.demography-kpis>div,.economy-bars>div,.economy-context>div')].find(r => (r.querySelector('dt,span')?.textContent || '').toLocaleLowerCase('fr').includes(label.toLocaleLowerCase('fr'))) : null;
+      const section = findSection(sectionTitle);
+      const row = section ? [...section.querySelectorAll('.data-grid>div,.demography-kpis>div,.economy-bars>div,.economy-context>div,.land-legend>div,.housing-radials>div,.age-labels>div')].find(r => (r.querySelector('dt,span')?.textContent || '').toLocaleLowerCase('fr').includes(label.toLocaleLowerCase('fr'))) : null;
       const match = row?.querySelector('dd,b')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
       return match ? Number(match[1].replace(',', '.')) : null;
     };
@@ -362,7 +363,7 @@
     const selected = sections.filter(s => wanted.includes(s.dataset.sectionTitle || '')).map(s => {
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
-      if (s.dataset.sectionTitle === 'Population et dynamiques sociales') {
+      if (/^(Population et dynamiques sociales|Démographie, revenus et emploi)$/.test(s.dataset.sectionTitle || '')) {
         [...clone.querySelectorAll('.data-grid>div')].slice(6).forEach(row => row.remove());
         clone.querySelector('.family-chart')?.remove();
       }
@@ -378,16 +379,38 @@
     const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].filter(row => /^(Maire|Canton)$/i.test(row.querySelector('dt')?.textContent?.trim() || '')).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
     const unemployment = findPercentage('Économie locale', 'chômage');
     const poverty = findPercentage('Population et dynamiques sociales', 'pauvreté');
-    const populationSection = sections.find(s => s.dataset.sectionTitle === 'Population et dynamiques sociales');
+    const populationSection = findSection('Population et dynamiques sociales');
     const profilePercent = (selector, pattern) => [...(populationSection?.querySelectorAll(`${selector}>div`) || [])].filter(row => pattern.test(row.querySelector('span')?.textContent || '')).reduce((sum, row) => sum + Number((row.querySelector('b')?.textContent || '').match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(',', '.') || 0), 0);
     const higherEducation = profilePercent('.education-profile', /Bac\+2|Licence|Bac\+5/i);
     const transit = profilePercent('.commute-profile', /transport.*commun/i);
-    const strengths = [higherEducation > 0 ? `${higherEducation.toFixed(1)} % de diplômés du supérieur` : null, transit > 0 ? `${transit.toFixed(1)} % des actifs utilisent les transports collectifs` : null, unemployment != null && unemployment < 8 ? `Chômage contenu : ${unemployment.toFixed(1)} %` : null].filter(Boolean).slice(0, 2);
-    const watch = [unemployment != null ? `Chômage : ${unemployment.toFixed(1)} % des 15-64 ans` : null, poverty != null ? `Pauvreté : ${poverty.toFixed(1)} % de la population` : null, higherEducation && higherEducation < 20 ? `Diplômés du supérieur : ${higherEducation.toFixed(1)} %` : null, transit != null && transit < 10 ? `Usage des transports collectifs : ${transit.toFixed(1)} %` : null].filter(Boolean).slice(0, 2);
-    const reading = `<section class="territorial-reading"><h2>Lecture territoriale</h2><div><article><h3>Atouts</h3>${strengths.map(item => `<p>${escapeHtml(item)}</p>`).join('') || '<p>Indicateurs à consolider pour qualifier les atouts.</p>'}</article><article><h3>Points de vigilance</h3>${watch.map(item => `<p>${escapeHtml(item)}</p>`).join('') || '<p>Aucun écart majeur parmi les indicateurs disponibles.</p>'}</article></div></section>`;
+    const carUse = profilePercent('.commute-profile', /voiture|camion|fourgonnette/i);
+    const youth = findPercentage('Population et dynamiques sociales', 'Moins de 20 ans');
+    const seniors = findPercentage('Population et dynamiques sociales', '65 ans ou plus');
+    const vacancy = findPercentage('Logement', 'vacants');
+    const naturalShare = findPercentage('Occupation du sol (MOS 2025)', 'agricoles, forestiers et naturels');
+    const formatInsight = item => `<p><strong>${escapeHtml(item.metric)}</strong><span>${escapeHtml(item.text)}</span></p>`;
+    const strengths = [
+      higherEducation >= 25 ? { metric: `${higherEducation.toFixed(1)} %`, text: 'de diplômés du supérieur : potentiel de qualification du territoire.' } : null,
+      transit >= 15 ? { metric: `${transit.toFixed(1)} %`, text: 'des actifs utilisent les transports collectifs : alternative automobile déjà présente.' } : null,
+      naturalShare >= 50 ? { metric: `${naturalShare.toFixed(1)} %`, text: 'd’espaces agricoles, forestiers et naturels : forte composante paysagère.' } : null,
+      youth >= 20 ? { metric: `${youth.toFixed(1)} %`, text: 'de moins de 20 ans : base démographique jeune et besoins familiaux importants.' } : null,
+      unemployment != null && unemployment < 8 ? { metric: `${unemployment.toFixed(1)} %`, text: 'de chômage : situation de l’emploi relativement favorable.' } : null,
+      poverty != null && poverty < 12 ? { metric: `${poverty.toFixed(1)} %`, text: 'de pauvreté : fragilité monétaire contenue.' } : null,
+      vacancy != null && vacancy < 6 ? { metric: `${vacancy.toFixed(1)} %`, text: 'de logements vacants : parc résidentiel fortement occupé.' } : null
+    ].filter(Boolean).slice(0, 3);
+    const watch = [
+      unemployment != null && unemployment >= 8 ? { metric: `${unemployment.toFixed(1)} %`, text: 'de chômage des 15-64 ans : accès à l’emploi à surveiller.' } : null,
+      poverty != null && poverty >= 12 ? { metric: `${poverty.toFixed(1)} %`, text: 'de pauvreté : enjeu de cohésion sociale et de pouvoir d’achat.' } : null,
+      carUse >= 65 ? { metric: `${carUse.toFixed(1)} %`, text: 'des actifs vont travailler en voiture : dépendance automobile marquée.' } : null,
+      vacancy != null && vacancy >= 6 ? { metric: `${vacancy.toFixed(1)} %`, text: 'de logements vacants : mobilisation du parc existant à examiner.' } : null,
+      seniors > 0 ? { metric: `${seniors.toFixed(1)} %`, text: 'de 65 ans ou plus : adaptation progressive des services et des mobilités.' } : null,
+      higherEducation > 0 && higherEducation < 25 ? { metric: `${higherEducation.toFixed(1)} %`, text: 'de diplômés du supérieur : enjeu de qualification et d’attractivité.' } : null,
+      transit > 0 && transit < 15 ? { metric: `${transit.toFixed(1)} %`, text: 'des actifs utilisent les transports collectifs : offre ou usage à renforcer.' } : null
+    ].filter(Boolean).slice(0, 3);
+    const reading = `<section class="territorial-reading"><header><h2>Lecture territoriale</h2><p>Repères issus des indicateurs disponibles pour situer les principaux leviers et enjeux communaux.</p></header><div><article><h3>Forces et leviers</h3>${strengths.map(formatInsight).join('') || '<p><span>Indicateurs à consolider pour qualifier les leviers territoriaux.</span></p>'}</article><article><h3>Vigilances et enjeux</h3>${watch.map(formatInsight).join('') || '<p><span>Aucun écart majeur parmi les indicateurs disponibles.</span></p>'}</article></div></section>`;
     const selectedMap = new Map(selected.map(html => { const wrap = document.createElement('div'); wrap.innerHTML = html; return [wrap.firstElementChild?.dataset.sectionTitle || '', html]; }));
     const left = ['Chiffres clés', 'Logement', 'Économie locale'].map(title => selectedMap.get(title) || '').join('');
-    const right = ['Population et dynamiques sociales', 'Occupation du sol (MOS 2025)'].map(title => selectedMap.get(title) || '').join('');
+    const right = `${selectedMap.get('Population et dynamiques sociales') || selectedMap.get('Démographie, revenus et emploi') || ''}${selectedMap.get('Occupation du sol (MOS 2025)') || ''}`;
     const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid summary-columns"><div>${left}</div><div>${right}</div></div>${reading}`;
     document.getElementById('dataPages').innerHTML = pageHtml(state.nom, content, 0, 1, 'summary-page');
   }
