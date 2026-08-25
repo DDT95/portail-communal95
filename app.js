@@ -552,14 +552,19 @@ function renderFicheDrawer(open) {
   const demoRows = [
     ['Population (RP Insee)', pop ? formatNumber(Math.round(pop)) + ' hab.' : null],
     ['Niveau de vie médian', revenus.niveau_vie_median?.value ? formatNumber(revenus.niveau_vie_median.value) + ' €/an' : null],
-    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null]
+    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null],
+    ['Moins de 20 ans', pyramide[0]?.pct != null ? pyramide[0].pct.toFixed(1) + ' %' : null],
+    ['65 ans ou plus', pyramide[2]?.pct != null ? pyramide[2].pct.toFixed(1) + ' %' : null],
+    ['Familles avec enfant(s)', familles.length ? familles.filter(f => /avec enfant/i.test(f.label)).reduce((sum, f) => sum + (f.pct || 0), 0).toFixed(1) + ' %' : null]
   ].filter(([, v]) => v);
   const economyRows = [
     ['Établissements actifs', eco.etablissements_actifs?.value ? formatNumber(Math.round(eco.etablissements_actifs.value)) : null],
     ['Emplois salariés', eco.emplois_salaries?.value ? formatNumber(Math.round(eco.emplois_salaries.value)) : null],
     ['Taux de chômage des 15-64 ans', chomage != null ? chomage.toFixed(1) + ' %' : null],
     ['Niveau de vie médian', revenus.niveau_vie_median?.value ? formatNumber(revenus.niveau_vie_median.value) + ' €/an' : null],
-    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null]
+    ['Taux de pauvreté', revenus.taux_pauvrete?.value != null ? revenus.taux_pauvrete.value.toFixed(1) + ' %' : null],
+    ['Emplois salariés pour 100 habitants', eco.emplois_salaries?.value && pop ? (eco.emplois_salaries.value / pop * 100).toFixed(1) : null],
+    ['Emplois salariés par établissement', eco.emplois_salaries?.value && eco.etablissements_actifs?.value ? (eco.emplois_salaries.value / eco.etablissements_actifs.value).toFixed(1) : null]
   ].filter(([, v]) => v);
   const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
   const familySegments = familles.filter(f => f.pct > 0).map((f, i) => ({ label: f.label, pct: f.pct, count: f.value, color: ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'][i] || '#0d5c63' }));

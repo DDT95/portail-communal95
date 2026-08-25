@@ -205,15 +205,14 @@
       allPctRows.forEach(item => item.row.remove());
       const pctRows = allPctRows.filter(item => item.value > 0);
       if (pctRows.length) {
-        const radialCirc = 201.06;
-        const radials = `<div class="housing-radials">${pctRows.map(item => `<div><svg viewBox="0 0 100 100" role="img" aria-label="${escapeHtml(item.label)} : ${item.value.toFixed(1)} %"><circle cx="50" cy="50" r="32" fill="none" stroke="#e4e0eb" stroke-width="11"/><circle cx="50" cy="50" r="32" fill="none" stroke="#7b4ab5" stroke-width="11" stroke-linecap="round" stroke-dasharray="${item.value / 100 * radialCirc} ${radialCirc}" transform="rotate(-90 50 50)"/><text x="50" y="55" text-anchor="middle">${item.value.toFixed(1)}%</text></svg><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
+        const radials = `<div class="housing-radials">${pctRows.map(item => `<div><b>${item.value.toFixed(1)} %</b><span>${escapeHtml(item.label)}</span><i><em style="width:${item.value}%"></em></i></div>`).join('')}</div>`;
         section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', radials);
       }
     }
     if (title === 'Économie locale') {
       const rows = [...section.querySelectorAll('.data-grid>div')].map(row => ({ label: row.querySelector('dt')?.textContent.trim() || '', value: row.querySelector('dd')?.textContent.trim() || '' }));
-      const headline = rows.filter(row => /Établissements|Emplois salariés/i.test(row.label));
-      const context = rows.filter(row => !headline.includes(row));
+      const headline = rows.filter(row => /Établissements actifs|Emplois salariés$/i.test(row.label)).slice(0, 2);
+      const context = rows.filter(row => !headline.includes(row)).slice(0, 5);
       section.querySelector('.data-grid')?.remove();
       section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="economy-viz"><div class="economy-headlines">${headline.map((row, i) => `<div><i>${i === 0 ? 'ÉTABLISSEMENTS' : 'EMPLOIS'}</i><b>${escapeHtml(row.value)}</b><span>${escapeHtml(row.label)}</span></div>`).join('')}</div><div class="economy-context">${context.map(row => `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}</div></div>`);
     }
@@ -245,14 +244,22 @@
     if (!hosts.length || !state.contour || !window.L) return;
     await Promise.all(hosts.map(host => new Promise(resolve => {
       const map = L.map(host, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false });
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, crossOrigin: true }).addTo(map);
+      const GreyTileLayer = L.TileLayer.extend({ createTile(coords, done) {
+        const tile = document.createElement('canvas'); const size = this.getTileSize(); tile.width = size.x; tile.height = size.y;
+        const ctx = tile.getContext('2d'); const img = new Image(); img.crossOrigin = 'anonymous';
+        img.onload = () => { ctx.drawImage(img, 0, 0, size.x, size.y); const image = ctx.getImageData(0, 0, size.x, size.y); const d = image.data;
+          for (let i = 0; i < d.length; i += 4) { const grey = .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; d[i] = d[i + 1] = d[i + 2] = Math.min(255, grey * 1.08); }
+          ctx.putImageData(image, 0, 0); done(null, tile); };
+        img.onerror = error => done(error, tile); img.src = this.getTileUrl(coords); return tile;
+      }});
+      const tiles = new GreyTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
       const boundary = L.geoJSON(state.contour, { style: { color: '#000091', weight: 3, opacity: 1, fillColor: '#6f78c8', fillOpacity: .16 } }).addTo(map);
-      map.fitBounds(boundary.getBounds(), { padding: [12, 12] });
-      map.invalidateSize();
+      const recenter = () => { map.invalidateSize(); const bounds = boundary.getBounds(); map.fitBounds(bounds, { paddingTopLeft: [28, 28], paddingBottomRight: [28, 28], animate: false }); map.panTo(bounds.getCenter(), { animate: false }); };
+      recenter();
       let settled = false;
-      const done = () => { if (!settled) { settled = true; setTimeout(resolve, 250); } };
+      const done = () => { if (!settled) { settled = true; setTimeout(() => { recenter(); resolve(); }, 250); } };
       tiles.once('load', done);
-      setTimeout(done, 1400);
+      setTimeout(done, 1600);
     })));
   }
 
