@@ -276,72 +276,6 @@
     </div>`;
   }
 
-  function miniMapHtml() {
-    return `<figure class="commune-map-card"><div class="commune-mini-map" aria-label="Carte de ${escapeHtml(state.nom)} sur fond OpenStreetMap"></div></figure>`;
-  }
-
-  async function initMiniMaps() {
-    const hosts = [...document.querySelectorAll('.commune-mini-map')];
-    if (!hosts.length || !state.contour || !window.L) return;
-    await Promise.all(hosts.map(host => new Promise(resolve => {
-      const map = L.map(host, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false });
-      const GreyTileLayer = L.TileLayer.extend({ createTile(coords, done) {
-        const tile = document.createElement('canvas'); const size = this.getTileSize(); tile.width = size.x; tile.height = size.y;
-        const ctx = tile.getContext('2d'); const img = new Image(); img.crossOrigin = 'anonymous';
-        img.onload = () => { ctx.drawImage(img, 0, 0, size.x, size.y); const image = ctx.getImageData(0, 0, size.x, size.y); const d = image.data;
-          for (let i = 0; i < d.length; i += 4) { const grey = .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; d[i] = d[i + 1] = d[i + 2] = Math.min(255, grey * 1.08); }
-          ctx.putImageData(image, 0, 0); done(null, tile); };
-        img.onerror = error => done(error, tile); img.src = this.getTileUrl(coords); return tile;
-      }});
-      const tiles = new GreyTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
-      const boundary = L.geoJSON(state.contour, { style: { color: '#000091', weight: 3, opacity: 1, fillColor: '#6f78c8', fillOpacity: .16 } }).addTo(map);
-      const recenter = () => {
-        map.invalidateSize({ animate: false });
-        const compact = Boolean(host.closest('.summary-page'));
-        const padding = compact ? [12, 8] : [18, 14];
-        // Le cadre géographique est volontairement élargi avant fitBounds :
-        // le contour conserve ainsi une marge visible, même si le bloc change
-        // encore légèrement de taille pendant la composition A4.
-        const rawBounds = boundary.getBounds();
-        const framedBounds = rawBounds.pad(compact ? 0.28 : 0.20);
-        const zoom = map.getBoundsZoom(framedBounds, false, L.point(padding[0] * 2, padding[1] * 2));
-        // setView impose explicitement le centre géométrique. Contrairement à
-        // fitBounds, le cadrage ne dépend alors plus d'un redimensionnement
-        // tardif du conteneur pendant la composition du PDF.
-        map.setView(rawBounds.getCenter(), Math.min(zoom, compact ? 13 : 14), { animate: false, reset: true });
-      };
-      recenter();
-      const observer = new ResizeObserver(recenter);
-      observer.observe(host);
-      let settled = false;
-      const freezeMap = async () => {
-        recenter();
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        recenter();
-        await new Promise(r => setTimeout(r, 120));
-        try {
-          // Leaflet déplace séparément les tuiles et le calque SVG. Lors de la
-          // capture de la page entière, html2canvas pouvait réinterpréter ces
-          // transformations et décaler le contour communal. On fige donc la
-          // carte cadrée en une seule image avant de composer le PDF.
-          const canvas = await html2canvas(host, { scale: 2, useCORS: true, backgroundColor: '#dedfe2', logging: false });
-          const image = document.createElement('img');
-          image.src = canvas.toDataURL('image/jpeg', 0.94);
-          image.alt = `Carte centrée de ${state.nom}`;
-          image.className = 'commune-mini-map-image';
-          await image.decode().catch(() => {});
-          map.remove();
-          host.replaceChildren(image);
-        } catch (error) {
-          console.warn('La carte n’a pas pu être figée avant export.', error);
-        }
-      };
-      const done = () => { if (!settled) { settled = true; setTimeout(async () => { observer.disconnect(); await freezeMap(); resolve(); }, 350); } };
-      tiles.once('load', done);
-      setTimeout(done, 1600);
-    })));
-  }
-
   function buildSynthese() {
     const sections = portalSections();
     const wanted = ['Chiffres clés', 'Population et dynamiques sociales', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Économie locale'];
@@ -446,8 +380,6 @@
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
     const portal = portalSections();
-    const completeKey = portal.find(s => s.dataset.sectionTitle === 'Chiffres clés');
-    if (completeKey && !completeKey.querySelector('.commune-map-card')) completeKey.insertAdjacentHTML('afterbegin', miniMapHtml());
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const octeThemeHtml = theme => {
@@ -622,10 +554,14 @@
     };
     const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
+    // Le volet OCTE habitat rejoint par défaut la page « Habitat et logement » ;
+    // il n'est déplacé sur sa propre page qu'a posteriori, si la mesure réelle
+    // du rendu montre que la page déborde (voir plus bas) — plus fiable qu'un
+    // seuil estimé à l'avance, qui ignore la densité propre du volet portail.
     const integratedGroups = [
       ['Repères territoriaux et gouvernance', [], ['Chiffres clés', 'Élus et gouvernance']],
       ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Population et dynamiques sociales']],
-      ['Habitat et logement', [], ['Logement']],
+      ['Habitat et logement', ['Habitat logements'], ['Logement']],
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
       ['Économie et emploi', ['Développement économique'], ['Économie locale']],
       ['Planification et projets territoriaux', ['Données générales', 'Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
@@ -634,12 +570,29 @@
       ['Risques et sécurité', ['Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés', 'Sécurité']]
     ];
     const pages = integratedGroups.map(([title, octeNames, enrichedNames], index) => ({ title, html: `${warning}${index === 0 ? `${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` : `${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}`}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
-    // Le volet OCTE habitat est volontairement isolé sur une page dédiée :
-    // ses nombreux indicateurs restent tous lisibles sans comprimer ni couper
-    // la page consacrée au marché et au profil du parc.
-    const housingOfficial = officialHtml(['Habitat logements']);
-    if (housingOfficial) pages.push({ title: 'Cadre réglementaire du logement', html: `${warning}${housingOfficial}` });
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
+    splitOverflowingHousingPage();
+  }
+
+  // Sépare le volet OCTE habitat sur sa propre page seulement si la page
+  // « Habitat et logement » déborde réellement une fois rendue (le portail
+  // et l'OCTE sont chacun de densité variable selon la commune).
+  function splitOverflowingHousingPage() {
+    const dataPages = document.getElementById('dataPages');
+    const housingPage = [...dataPages.querySelectorAll('.data-page')].find(p => p.querySelector('.data-page-head strong')?.textContent === 'Habitat et logement');
+    if (!housingPage) return;
+    const body = housingPage.querySelector('.data-body');
+    const octeBlock = body.querySelector('.octe-housing');
+    if (!octeBlock || body.scrollHeight <= body.clientHeight + 10) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = pageHtml('Cadre réglementaire du logement', octeBlock.outerHTML, 1, 2);
+    octeBlock.remove();
+    housingPage.after(wrap.firstElementChild);
+    const renumbered = [...dataPages.querySelectorAll('.data-page')];
+    renumbered.forEach((page, index) => {
+      const marker = page.querySelector('.data-foot span:last-child');
+      if (marker) marker.textContent = marker.textContent.replace(/^\d+\/\d+/, `${index + 1}/${renumbered.length}`);
+    });
   }
 
   async function buildPdf() {
@@ -666,6 +619,6 @@
     window.location.replace(blobUrl);
   }
 
-  const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => initMiniMaps()).then(() => new Promise(r => setTimeout(r, 350)));
+  const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => new Promise(r => setTimeout(r, 350)));
   ready.then(() => previewOnly ? statusEl.classList.add('done') : buildPdf()).catch(err => { console.error(err); statusEl.textContent = 'La génération du PDF a échoué. Réessayez depuis la fiche.'; });
 })();

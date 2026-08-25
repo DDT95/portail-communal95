@@ -94,7 +94,9 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
    disponible à parts égales, pour ne jamais laisser un grand vide en bas. */
 /* Chaque bloc garde sa hauteur naturelle (jamais de contenu comprimé ou
    coupé) ; s'il est seul sur la page, il s'étire pour l'occuper pleinement. */
-.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:0 0 auto;display:flex;flex-direction:column}
+/* grow (1) pour occuper le vide s'il y en a, shrink (0) jamais : un contenu
+   dense garde sa taille naturelle plutôt que d'être comprimé ou coupé. */
+.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center}
 .data-body>*:only-child{flex:1}
 .data-body{justify-content:flex-start}
 
@@ -123,18 +125,10 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .value-meter span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
 
 /* ---- Chiffres clés (première page) : mise en évidence explicite ---- */
-.viz-key{display:grid;grid-template-columns:76mm minmax(0,1fr);grid-template-rows:auto minmax(56mm,1fr);gap:var(--s2) var(--s3)}
-.viz-key>h3{grid-column:1/-1;grid-row:1}
-.viz-key>.commune-map-card{grid-column:1;grid-row:2}
-.viz-key>.data-grid{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s2);align-content:stretch;min-width:0}
-.viz-key>.source-note{grid-column:1/-1}
-.viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:0;padding:var(--s2) var(--s3);border:0;border-left:1mm solid var(--blue);border-radius:0 var(--radius) var(--radius) 0;background:var(--paper)}
-.viz-key .data-grid dt{font-size:8pt}
-.viz-key .data-grid dd{font-size:14pt;line-height:1.15;margin-top:1.5mm;color:var(--blue);text-align:left;white-space:normal;overflow-wrap:anywhere}
-.commune-map-card{display:block;height:100%;margin:0;padding:1.5mm;background:var(--paper);border:.25mm solid var(--line);border-radius:var(--radius);overflow:hidden}
-.commune-mini-map{height:100%;min-height:38mm;background:#e6e8eb;border-radius:1.4mm;overflow:hidden}
-.commune-mini-map .leaflet-tile-pane{filter:grayscale(1) contrast(.82) brightness(1.08);opacity:.82}
-.commune-mini-map-image{display:block;width:100%;height:100%;object-fit:cover}
+.viz-key .data-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2);min-width:0}
+.viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:26mm;padding:var(--s3);border:0;border-left:1mm solid var(--blue);border-radius:0 var(--radius) var(--radius) 0;background:var(--paper)}
+.viz-key .data-grid dt{font-size:8.5pt}
+.viz-key .data-grid dd{font-size:16pt;line-height:1.2;margin-top:1.8mm;color:var(--blue);text-align:left;white-space:normal;overflow-wrap:anywhere}
 
 /* ---- Gouvernance ---- */
 .viz-governance .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s1) var(--s3)}
@@ -395,12 +389,10 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .data-grid>div{padding:.5mm 0;font-size:7pt;gap:3mm}
 .summary-page .source-note{display:none}
 
-.summary-page .viz-key{grid-template-columns:1fr;grid-template-rows:auto auto;gap:var(--s1)}
-.summary-page .viz-key .data-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:var(--s1)}
+.summary-page .viz-key .data-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1)}
 .summary-page .viz-key .data-grid>div{min-height:0;padding:1.8mm 2.4mm}
 .summary-page .viz-key .data-grid dt{font-size:6.2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .summary-page .viz-key .data-grid dd{font-size:8.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-page .commune-map-card{display:none}
 
 .summary-page .demography-kpis{grid-template-columns:repeat(3,1fr);gap:var(--s1);margin-bottom:var(--s1)}
 .summary-page .demography-kpis>div{padding:1.8mm}
