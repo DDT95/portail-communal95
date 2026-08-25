@@ -31,6 +31,7 @@ const CFG = {
   roadsFile: 'https://ddt95.github.io/transport95/roads95.js',
   mobilityFile: 'https://ddt95.github.io/transport95/mobility95.js',
   voInseeApi: 'https://ddt95.github.io/VO-Insee/data/processed/commune_profiles.json',
+  dvfStatsFile: 'data/dvf_stats_95.json',
   cycleFile: 'https://ddt95.github.io/transport95/cycle95.js',
   icpeApi: 'https://www.georisques.gouv.fr/api/v1/installations_classees',
   sspApi: 'https://www.georisques.gouv.fr/api/v1/ssp',
@@ -90,7 +91,7 @@ const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4'
 
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
-  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null, securite: null, mobilitySummary: null,
+  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, dvf: null, mosSummary: null, securite: null, mobilitySummary: null,
   layers: {}, layerDefs: [], layerLoading: new Set(),
   drawerMode: 'commune'
 };
@@ -100,6 +101,7 @@ let refreshCommuneList = () => {};
 // premier await : à ce point le script n'a pas fini de s'évaluer, donc
 // une const/let déclarée plus bas provoquerait une TDZ ReferenceError.
 let inseeProfilesCache = null;
+let dvfStatsCache = null;
 let securiteCache = null;
 
 const $ = id => document.getElementById(id);
@@ -217,6 +219,11 @@ function renderCompareColumn(code, nom, profile) {
   const diplomes = t.habitants?.diplomes?.repartition || [];
   const transport = t.emploi_mobilites?.transport || [];
   const eco = t.economie_equipements?.entreprises || {};
+  const creations = t.economie_equipements?.creations || {};
+  const construction = t.logement?.construction || {};
+  const renovation = t.logement?.renovation || {};
+  const chauffage = t.logement?.energie_chauffage?.repartition || [];
+  const dvf = state.dvf;
   const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
 
   const kpiRows = [
@@ -362,7 +369,7 @@ async function loadCommune(code, nomHint) {
     // Ces appels ne dépendent que du code Insee (pas du contour) : on les
     // lance en parallèle de la fiche commune elle-même plutôt qu'après,
     // pour ne pas payer leur latence deux fois.
-    const early = [loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadInsee(code), loadSecurite(code)];
+    const early = [loadElus(code), loadRisques(code), loadZan(code), loadEau(code), loadEnergie(code), loadInsee(code), loadDvfStats(code), loadSecurite(code)];
     const commune = await fetchTimeout(`${CFG.communesApi}/communes/${code}?fields=nom,code,codeEpci,centre,contour,population,surface`).then(r => r.json());
     if (!commune.nom) throw new Error('Commune introuvable');
     state.nom = commune.nom || nomHint || code;
@@ -459,6 +466,11 @@ function loadInsee(code) {
   return inseeProfilesCache.then(profiles => { state.insee = profiles[code] || null; }).catch(() => { state.insee = null; });
 }
 
+function loadDvfStats(code) {
+  dvfStatsCache = dvfStatsCache || fetchTimeout(CFG.dvfStatsFile).then(r => r.json());
+  return dvfStatsCache.then(all => { state.dvf = all[code] || null; }).catch(() => { state.dvf = null; });
+}
+
 function loadSecurite(code) {
   securiteCache = securiteCache || fetchTimeout(CFG.securiteFile).then(r => r.json());
   return securiteCache.then(all => { state.securite = all[code] || null; }).catch(() => { state.securite = null; });
@@ -545,6 +557,11 @@ function renderFicheDrawer(open) {
   const parc = t.logement?.parc || {};
   const vacance = t.logement?.vacance?.taux_vacance_rp?.value;
   const eco = t.economie_equipements?.entreprises || {};
+  const creations = t.economie_equipements?.creations || {};
+  const construction = t.logement?.construction || {};
+  const renovation = t.logement?.renovation || {};
+  const chauffage = t.logement?.energie_chauffage?.repartition || [];
+  const dvf = state.dvf;
   const transport = t.emploi_mobilites?.transport || [];
   const familles = t.habitants?.structure_familles?.repartition || [];
   const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
@@ -566,6 +583,12 @@ function renderFicheDrawer(open) {
     ['Emplois salariés pour 100 habitants', eco.emplois_salaries?.value && pop ? (eco.emplois_salaries.value / pop * 100).toFixed(1) : null],
     ['Emplois salariés par établissement', eco.emplois_salaries?.value && eco.etablissements_actifs?.value ? (eco.emplois_salaries.value / eco.etablissements_actifs.value).toFixed(1) : null]
   ].filter(([, v]) => v);
+  const economySectors = (eco.secteurs || []).filter(item => item.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 6);
+  const economySizes = (eco.par_taille || []).filter(item => item.pct > 0);
+  const economyExtra = [
+    ['Créations d’entreprises', creations.entreprises_2025?.value != null ? formatNumber(creations.entreprises_2025.value) : null],
+    ['Créations d’établissements', creations.etablissements_2025?.value != null ? formatNumber(creations.etablissements_2025.value) : null]
+  ].filter(([, value]) => value);
   const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
   const familySegments = familles.filter(f => f.pct > 0).map((f, i) => ({ label: f.label, pct: f.pct, count: f.value, color: ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'][i] || '#0d5c63' }));
   const familyDonut = familySegments.length ? donutChart(familySegments) : '';
@@ -577,12 +600,22 @@ function renderFicheDrawer(open) {
   ].filter(segment => segment && segment.pct > 0);
   const occDonut = occSegs.length ? donutChart(occSegs) : '';
   const logementRows = [
+    ['Parc total', parc.total?.value != null ? formatNumber(Math.round(parc.total.value)) : null],
     ['Résidences principales', rp ? formatNumber(Math.round(rp)) : null],
+    ['Résidences secondaires', parc.residences_secondaires?.value != null ? formatNumber(Math.round(parc.residences_secondaires.value)) : null],
     ['Part de logement social (RPLS)', partSocial != null ? partSocial.toFixed(1) + ' %' : null],
     ['Logements vacants', vacance != null ? vacance.toFixed(1) + ' %' : null],
+    ['Construits avant 1971', parc.part_avant_1971?.value != null ? parc.part_avant_1971.value.toFixed(1) + ' %' : null],
+    ['Passoires énergétiques DPE F-G', renovation.dpe_fg_part?.value != null ? renovation.dpe_fg_part.value.toFixed(1) + ' %' : null],
     ['Maisons', parc.maisons?.value != null ? pctOf(parc.maisons.value, parc.residences_principales?.value)?.toFixed(1) + ' %' : null],
     ['Appartements', parc.appartements?.value != null ? pctOf(parc.appartements.value, parc.residences_principales?.value)?.toFixed(1) + ' %' : null]
   ].filter(([, v]) => v);
+  const priceMarketHtml = dvf ? `<div class="housing-market"><h4>Marché immobilier · cinq dernières années</h4><div>${[
+    ['Prix médian', dvf.ensemble], ['Appartements', dvf.appartements], ['Maisons', dvf.maisons]
+  ].filter(([, item]) => item?.prix_m2_median).map(([label, item]) => `<article><span>${label}</span><b>${formatNumber(item.prix_m2_median)} €/m²</b><small>${formatNumber(item.ventes)} ventes analysées</small></article>`).join('')}</div><p>Source : DGFiP · statistiques DVF data.gouv.fr, période disponible 2021–2025.</p></div>` : '';
+  const constructionHtml = construction.serie_annuelle?.length ? `<div class="housing-production"><h4>Construction neuve</h4><div class="production-bars">${construction.serie_annuelle.map(item => { const max = Math.max(...construction.serie_annuelle.flatMap(row => [row.autorises || 0, row.commences || 0]), 1); return `<article><span>${item.annee}</span><i><em style="height:${(item.autorises || 0) / max * 100}%"></em><strong style="height:${(item.commences || 0) / max * 100}%"></strong></i><small>${formatNumber(item.autorises || 0)} autorisés · ${formatNumber(item.commences || 0)} commencés</small></article>`; }).join('')}</div><p><i></i> autorisés <b></b> commencés · Sitadel3</p></div>` : '';
+  const heatingHtml = chauffage.length ? `<div class="housing-heating"><h4>Énergie principale de chauffage</h4>${chauffage.slice(0, 5).map(item => `<div><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>` : '';
+  const economyDetailHtml = economySectors.length ? `<div class="economy-detail"><div class="sector-viz"><h4>Répartition des établissements par secteur</h4>${economySectors.map(item => `<div><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>${economySizes.length ? `<div class="size-viz"><h4>Taille des établissements employeurs</h4><div class="size-band">${economySizes.map((item, index) => `<i style="width:${item.pct}%;--c:${['#743b00','#a6570b','#c87825','#e29a50','#efbd86','#f7dfc2'][index]}"></i>`).join('')}</div>${economySizes.map((item, index) => `<p><i style="--c:${['#743b00','#a6570b','#c87825','#e29a50','#efbd86','#f7dfc2'][index]}"></i><span>${escapeHtml(item.label)}</span><b>${item.pct.toFixed(1)} %</b></p>`).join('')}</div>` : ''}</div>` : '';
 
   // ---- Occupation du sol (MOS 2025, IAU Île-de-France) ----
   const mos = state.mosSummary;
@@ -625,8 +658,8 @@ function renderFicheDrawer(open) {
     ${elusRows.length ? `<section class="result-section"><h3>Élus et gouvernance</h3><dl class="data-grid">${elusRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>` : ''}
     ${secRows.length ? `<section class="result-section"><h3>Sécurité</h3><dl class="data-grid">${secRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${l === 'Téléphone' ? `<a href="tel:${escapeHtml(v.replace(/\s/g, ''))}">${escapeHtml(v)}</a>` : escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">SSMSI · OpenStreetMap — voir <a href="https://ddt95.github.io/val-doise-securite/" target="_blank" rel="noreferrer">Sécurité et prévention</a> pour la carte complète.</p></section>` : ''}
     ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Structure par âge</p>${ageDonut}` : ''}${familyDonut ? `<p class="fiche-subhead">Structure des ménages</p>${familyDonut}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
-    ${economyRows.length ? `<section class="result-section"><h3>Économie locale</h3><dl class="data-grid">${economyRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Insee · RP2023, Filosofi, REE 2024.</p></section>` : ''}
-    ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}<p class="source-note">Insee · RPLS — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
+    ${economyRows.length ? `<section class="result-section"><h3>Économie locale</h3><dl class="data-grid">${[...economyRows, ...economyExtra].map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>${economyDetailHtml}<p class="source-note">Insee · RP2023, Filosofi, REE 2024–2025.</p></section>` : ''}
+    ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${priceMarketHtml}${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${constructionHtml}${heatingHtml}<p class="source-note">Insee · RPLS · Sitadel3 · ADEME · DGFiP/DVF — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
     ${mosRows.length ? `<section class="result-section"><h3>Occupation du sol (MOS 2025)</h3>${mosSegs.length ? donutChart(mosSegs) : ''}<dl class="data-grid">${mosRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Institut Paris Region — millésime 2025 · estimation sur l’emprise communale.</p></section>` : ''}
     ${mobilityHtml}
     <section class="result-section"><h3>Risques majeurs recensés</h3><div class="risque-pills">${risquesHtml}</div><p class="source-note">Géorisques · GASPAR — consulter <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noreferrer">georisques.gouv.fr</a> pour le détail réglementaire.</p></section>

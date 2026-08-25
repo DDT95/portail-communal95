@@ -503,7 +503,13 @@
         unavailable = [];
       }
       if (theme.title === 'Transports / déplacements et Aménagement') {
-        available = available.map(entry => /Taux de motorisation/i.test(entry.label) ? { ...entry, label: 'Motorisation des ménages', value: `${entry.value} véhicule(s) par ménage` } : entry);
+        available = available.map(entry => {
+          if (/Taux de motorisation/i.test(entry.label)) return { ...entry, label: 'Motorisation des ménages', value: `${entry.value} véhicule par ménage` };
+          if (/Réseau routier/i.test(entry.label)) return { ...entry, label: 'Voirie et projets routiers', value: entry.value.replace(/,s*/g, ' · ').replace(/B,Ré/g, 'B · Ré') };
+          if (/Réseau de transport en commun/i.test(entry.label)) return { ...entry, label: /LIGNE|RER|TRANSILIEN/i.test(entry.value) ? 'Desserte ferroviaire' : 'Réseau collectif et projets', value: entry.value.replace(/,s*/g, ' · ') };
+          if (/Nombre de gares/i.test(entry.label)) return { ...entry, label: 'Gares et stations' };
+          return entry;
+        });
         unavailable = [];
       }
       if (theme.title === 'Développement économique') {
@@ -514,7 +520,8 @@
       unavailable = [];
       if (!available.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
-      return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
+      const themeClass = theme.title === 'Habitat logements' ? ' octe-housing' : theme.title === 'Développement économique' ? ' octe-economy' : theme.title === 'Transports / déplacements et Aménagement' ? ' octe-mobility' : theme.title === 'Démarches territoriales' ? ' octe-planning' : '';
+      return `<section class="octe-theme${themeClass}${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
         const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
         const context = contextFor(entry.label);

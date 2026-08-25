@@ -290,6 +290,28 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .economy-context>div{min-height:22mm;padding:var(--s2);justify-content:space-between;border:0;border-left:1mm solid #d59250;background:#fff}
 .economy-context span{font-size:8pt}.economy-context b{font-size:12pt}
 
+/* Fiches métier enrichies : une lecture, une hiérarchie, puis le détail. */
+.housing-market{margin:0 0 var(--s3);padding:var(--s3);background:#f7f1fb;border-left:1.2mm solid #7b4ab5;border-radius:1.5mm}
+.housing-market h4,.housing-production h4,.housing-heating h4,.economy-detail h4{margin:0 0 var(--s2);font-size:9pt;line-height:1.2;color:#4d2472}
+.housing-market>div{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.housing-market article{display:flex;min-height:21mm;flex-direction:column;justify-content:center;padding:var(--s2);background:#fff;border-radius:1.5mm}
+.housing-market article span{font-size:7.5pt;color:#6a6170}.housing-market article b{font-size:15pt;line-height:1.1;color:#55227f}.housing-market article small{margin-top:1.5mm;font-size:7pt;color:#6a6170}
+.housing-market>p{margin:2mm 0 0;font-size:6.5pt;color:#746b78}
+.housing-production,.housing-heating{margin-top:var(--s3);padding:var(--s3);background:#fff;border:0.3mm solid #e3d9eb;border-radius:1.5mm}
+.production-bars{height:35mm;display:flex;align-items:stretch;gap:var(--s2)}.production-bars article{flex:1;display:grid;grid-template-rows:auto 1fr auto;gap:1mm;text-align:center}
+.production-bars article>span{font-size:7pt;color:#6a6170}.production-bars article>i{display:flex;align-items:end;justify-content:center;gap:1.5mm;border-bottom:.3mm solid #cfc5d8}
+.production-bars em,.production-bars strong{display:block;width:5mm;min-height:.8mm}.production-bars em{background:#7b4ab5}.production-bars strong{background:#d49ee8}
+.production-bars small{font-size:6.2pt;line-height:1.25;color:#6a6170}.housing-production>p{display:flex;align-items:center;gap:1.5mm;margin:2mm 0 0;font-size:6.5pt;color:#6a6170}.housing-production>p i,.housing-production>p b{display:inline-block;width:3mm;height:3mm}.housing-production>p i{background:#7b4ab5}.housing-production>p b{background:#d49ee8}
+.housing-heating>div{display:grid;grid-template-columns:42mm 1fr 15mm;align-items:center;gap:2mm;margin:1.5mm 0}.housing-heating span{font-size:7pt}.housing-heating i{height:2.2mm;background:#ece7ef;border-radius:2mm;overflow:hidden}.housing-heating em{display:block;height:100%;background:#9a65bb}.housing-heating b{font-size:7.5pt;text-align:right;color:#55227f}
+.economy-detail{display:grid;grid-template-columns:1.25fr .85fr;gap:var(--s3);margin-top:var(--s3)}
+.sector-viz,.size-viz{padding:var(--s3);background:#fffaf4;border:.3mm solid #f0dfce;border-radius:1.5mm}.economy-detail h4{color:#7a3b08}
+.sector-viz>div{display:grid;grid-template-columns:48mm 1fr 13mm;gap:2mm;align-items:center;margin:1.5mm 0}.sector-viz span,.size-viz p{font-size:6.8pt;line-height:1.2}.sector-viz>div>i{height:2.3mm;background:#eee3d8;border-radius:2mm;overflow:hidden}.sector-viz em{display:block;height:100%;background:#c56b18}.sector-viz b{font-size:7pt;text-align:right;color:#7a3b08}
+.size-band{display:flex;height:12mm;margin-bottom:2mm;overflow:hidden;border-radius:1.5mm}.size-band i{display:block;background:var(--c)}.size-viz p{display:grid;grid-template-columns:3mm 1fr auto;gap:1.5mm;align-items:center;margin:1mm 0}.size-viz p i{width:3mm;height:3mm;background:var(--c)}.size-viz p b{color:#7a3b08}
+.octe-mobility .octe-data-grid{grid-template-columns:repeat(2,1fr);gap:var(--s2)}.octe-mobility .octe-data-item{min-height:25mm;padding:var(--s3);background:#f8f9fd}.octe-mobility dt{font-size:7.5pt;color:#5d6270}.octe-mobility dd{font-size:10.5pt;line-height:1.28;font-weight:650;overflow-wrap:anywhere}
+.octe-planning .octe-status-matrix{grid-template-columns:repeat(3,1fr);gap:var(--s2)}.octe-planning .octe-status-matrix>div{min-height:20mm;padding:var(--s2)}
+#dataPage-2{--s3:3mm}#dataPage-2 .viz-housing{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}#dataPage-2 .viz-housing>h3,#dataPage-2 .viz-housing>.source-note,#dataPage-2 .viz-housing>.housing-market{grid-column:1/-1}#dataPage-2 .viz-housing>.housing-production,#dataPage-2 .viz-housing>.housing-heating{margin-top:0}#dataPage-2 .viz-housing>.housing-donut,#dataPage-2 .viz-housing>.data-grid{align-self:start}
+#dataPage-4 .viz-economy{padding:4mm}#dataPage-4 .economy-detail{margin-top:3mm}
+
 /* Synthèse : densité maîtrisée, carte lisible et titres toujours dominants */
 .summary-page{padding:8mm 10mm}
 .summary-page .data-page-head{margin-bottom:3mm}
