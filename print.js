@@ -369,6 +369,7 @@
       if (s.dataset.sectionTitle === 'Logement') clone.querySelector('.housing-radials')?.remove();
       if (s.dataset.sectionTitle === 'Économie locale') {
         clone.querySelector('.economy-detail')?.remove();
+        clone.querySelector('.economy-bars')?.remove();
         [...clone.querySelectorAll('.economy-context>div')].slice(3).forEach(row => row.remove());
       }
       return clone.outerHTML;

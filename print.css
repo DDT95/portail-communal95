@@ -3,21 +3,54 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 
-.pdf-status{position:fixed;right:18px;top:18px;z-index:5000;padding:12px 16px;border-radius:10px;background:#000091;color:#fff;font-size:12px;font-weight:700;letter-spacing:.02em;box-shadow:0 8px 28px #0005}
+/* =====================================================================
+   JETONS — un seul système de couleurs et de rythme pour toute la fiche.
+   - --blue/--deep : identité institutionnelle (chrome, gouvernance, clés).
+   - --ink/--muted/--line/--paper : texte et structure neutres.
+   - --good/--warn/--bad : sémantique d'état uniquement (jamais réutilisés
+     comme couleur de thème).
+   - --t-* : une couleur par thématique, dérivée de la palette catégorielle
+     validée (accessibilité CVD), utilisée UNIQUEMENT comme accent (1 mm)
+     + texte des chiffres clés — jamais en aplat de fond.
+   ===================================================================== */
+:root{
+  --blue:#000091; --deep:#0d0d45; --ink:#1c2333; --muted:#5f6b7a;
+  --line:#dde1ea; --line-soft:#eef0f6; --paper:#f5f7fb;
+  --good:#1a7a43; --good-soft:#e9f6ee; --bad:#c23a3a; --bad-soft:#fbeaea; --warn:#a3620d; --warn-soft:#fbf1e0;
+  --s1:1.5mm; --s2:3mm; --s3:5mm; --s4:7mm;
+  --radius:2mm;
+}
+/* Chaque thème : accent (bordure/icône), dark (texte des chiffres), soft (fond très clair, usage ponctuel) */
+.viz-key{--t:var(--blue);--t-dark:var(--blue);--t-soft:#eef0fb}
+.viz-governance{--t:var(--blue);--t-dark:var(--blue);--t-soft:#eef0fb}
+.viz-security{--t:#4b5568;--t-dark:#2e3646;--t-soft:#f1f2f5}
+.viz-demography{--t:#d1531f;--t-dark:#9c3c14;--t-soft:#fdeee7}
+.viz-housing{--t:#4a3aa7;--t-dark:#33236e;--t-soft:#efecfa}
+.viz-economy{--t:#b8780a;--t-dark:#7a4f06;--t-soft:#fbf1e0}
+.viz-mobility{--t:#1f5fa8;--t-dark:#123a6b;--t-soft:#e9f1fa}
+.viz-resources{--t:#128f77;--t-dark:#0b5c4c;--t-soft:#e6f6f2}
+.viz-land{--t:#1f7a3d;--t-dark:#12492a;--t-soft:#e9f7ec}
+.viz-risks{--t:#c23a3a;--t-dark:#7d2323;--t-soft:#fbeaea}
+.viz-city{--t:#a3396b;--t-dark:#6b2246;--t-soft:#f8ebf1}
+.octe-housing{--t:#4a3aa7;--t-dark:#33236e;--t-soft:#efecfa}
+.octe-economy{--t:#b8780a;--t-dark:#7a4f06;--t-soft:#fbf1e0}
+.octe-mobility{--t:#1f5fa8;--t-dark:#123a6b;--t-soft:#e9f1fa}
+.octe-planning{--t:#a3396b;--t-dark:#6b2246;--t-soft:#f8ebf1}
+
+/* =====================================================================
+   CARTE DDT (export A3) — inchangé dans son principe, jetons harmonisés.
+   ===================================================================== */
+.pdf-status{position:fixed;right:18px;top:18px;z-index:5000;padding:12px 16px;border-radius:10px;background:var(--blue);color:#fff;font-size:12px;font-weight:700;letter-spacing:.02em;box-shadow:0 8px 28px #0005}
 .pdf-status.done{display:none}
 
 .print-page{width:420mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;padding:6mm 8mm 4mm}
 .print-page[hidden],.data-page[hidden]{display:none}
-
 .print-header{display:flex;align-items:flex-end;gap:5mm}
 .print-logo{width:24mm;height:auto;display:block;flex:none}
-.print-header-text{min-width:0;flex:1;padding-bottom:2.5mm;border-bottom:.5mm solid #111}
-.print-header h1{margin:0;font-size:13pt;font-weight:700;color:#111;line-height:1.2}
-.print-header p{margin:.8mm 0 0;font-size:9pt;font-style:italic;color:#444}
-
+.print-header-text{min-width:0;flex:1;padding-bottom:2.5mm;border-bottom:.5mm solid var(--ink)}
+.print-header h1{margin:0;font-size:13pt;font-weight:700;color:var(--ink);line-height:1.2}
+.print-header p{margin:.8mm 0 0;font-size:9pt;font-style:italic;color:var(--muted)}
 .print-map{flex:1;min-height:0;margin-top:3mm;position:relative}
-#printMapCanvas{width:100%;height:100%;background:#fff}
-
 .print-legend{position:absolute;left:3mm;bottom:3mm;z-index:600;background:#fff;border:.3mm solid #333;padding:2.5mm 4mm;font-size:7.5pt;color:#222;max-width:70mm;max-height:60%;overflow:auto}
 .legend-block{margin-bottom:2mm}
 .legend-block:last-child{margin-bottom:0}
@@ -25,7 +58,6 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .legend-block span{display:flex;align-items:center;gap:2mm;margin-top:.6mm}
 .legend-block i{width:3.5mm;height:3.5mm;border-radius:.5mm;display:inline-block;flex:none;border:.15mm solid rgba(0,0,0,.25)}
 .legend-empty{color:#666;font-style:italic}
-
 .print-footer{position:relative;display:flex;align-items:center;justify-content:space-between;padding-top:2mm;border-top:.25mm solid #ccc}
 .print-sources{font-size:7pt;line-height:1.45;color:#333}
 .print-sources .src-line{display:block;white-space:nowrap}
@@ -41,313 +73,376 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .scale-ticks .scale-unit{font-weight:700;transform:translateX(4px)}
 .print-reference{font-size:7pt;color:#333;text-align:right;align-self:stretch;min-width:40mm;border-left:.3mm solid #111;padding-left:4mm;display:flex;align-items:center;justify-content:flex-end}
 
-.data-page{width:210mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:9mm 12mm;overflow:hidden;display:flex;flex-direction:column}
-.data-page-head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:.5mm solid #000091;margin-bottom:3mm;flex:none}
-.data-page-head img{width:24mm;height:auto}
-.data-page-head span{display:block;font-size:8pt;font-weight:700;letter-spacing:.06em;color:#000091}
-.data-page-head strong{display:block;font-size:17pt;color:#0d0d45;margin-top:1mm}
-.data-page-head em{display:block;font-style:normal;font-size:9pt;font-weight:700;color:#555;margin-top:1.2mm}
-.data-page:not(.summary-page) .data-page-head{align-items:stretch;gap:4mm;border:0;padding-bottom:0;margin-bottom:5mm}
-.data-page:not(.summary-page) .data-page-head img{align-self:center}
-.data-page:not(.summary-page) .data-page-head>div{flex:1;padding:4mm 5mm;background:#173f7a;color:#fff}
-.data-page:not(.summary-page) .data-page-head span{color:#c8d8f4}
-.data-page:not(.summary-page) .data-page-head strong{color:#fff;font-size:20pt;margin-top:1.5mm}
-.data-page:not(.summary-page) .data-page-head em{color:#fff;font-size:9.5pt;opacity:.92}
-.data-body{flex:1;min-height:0}
-.data-body .result-section{border:.3mm solid #d9deef;border-radius:3mm;padding:3.5mm 4.5mm;margin-bottom:2.5mm}
-.data-body .result-section h3{font-size:12.5pt;color:#000091;margin:0 0 3mm}
-.data-body .viz-section{--theme:#000091;--theme-soft:#eef0ff;position:relative;border-top:1.5mm solid var(--theme);background:linear-gradient(145deg,#fff 55%,var(--theme-soft))}
-.data-body .viz-demography{--theme:#e05a3f;--theme-soft:#fff1ed}
-.data-body .viz-housing{--theme:#7b4ab5;--theme-soft:#f5effc}
-.data-body .viz-land{--theme:#26875a;--theme-soft:#edf8f1}
-.data-body .viz-risks{--theme:#c43d4f;--theme-soft:#fff0f2}
-.data-body .viz-resources{--theme:#087e8b;--theme-soft:#eaf8f9}
-.data-body .viz-resources{padding:4mm 5mm}
-.data-body .viz-resources .data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
-.data-body .viz-resources .data-grid>div{display:block;padding:3mm;border:0;border-bottom:1.2mm solid var(--theme);background:#fff}
-.data-body .viz-resources .data-grid dt,.data-body .viz-resources .data-grid dd{text-align:left}
-.data-body .viz-resources .data-grid dd{margin-top:1.2mm;color:var(--theme);font-size:10pt}
-.data-body .viz-city{--theme:#c16914;--theme-soft:#fff5e8}
-.data-body .viz-governance{--theme:#3158a5;--theme-soft:#edf2fc}
-.data-body .viz-security{--theme:#5f6577;--theme-soft:#f2f3f6}
-.data-body .viz-mobility{--theme:#0063cb;--theme-soft:#edf6ff}
-.data-body .viz-economy{--theme:#b25b12;--theme-soft:#fff5e9}
-.data-body .viz-security{padding:3mm 4mm}
-.data-body .viz-security .data-grid>div{padding:1mm 0;font-size:8pt}
-.data-body .viz-security .source-note{margin-top:1.5mm}
-.data-body .viz-section h3{color:var(--theme)}
-.data-body .data-grid>div{display:flex;justify-content:space-between;gap:6mm;padding:2mm 0;border-top:.2mm solid #eee;font-size:9.5pt}
-.data-body .data-grid dt{color:#777;margin:0;overflow-wrap:normal;word-break:normal;hyphens:none}
-.data-body .data-grid dd{margin:0;font-weight:700;text-align:right;overflow-wrap:normal;word-break:normal;hyphens:none}
-.data-body .data-grid>div:has(.value-meter){display:grid;grid-template-columns:1fr auto;column-gap:5mm}
-.value-meter{display:block;grid-column:1/-1;height:1.5mm;border-radius:2mm;background:#e1e3eb;overflow:hidden}
-.value-meter span{display:block;height:100%;border-radius:2mm;background:var(--theme)}
-.viz-key .data-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2mm}
-.viz-key .data-grid>div{display:block;padding:3mm;border:0;border-radius:2.5mm;background:var(--theme-soft)}
-.viz-key .data-grid dt,.viz-key .data-grid dd{text-align:left}
-.viz-key .data-grid dd{margin-top:1mm;color:var(--theme);font-size:12pt}
-.data-body .risque-pill{display:inline-flex;padding:1.8mm 3.5mm;margin:0 2mm 2mm 0;border-radius:6mm;background:#fff4ef;border:.2mm solid #f0c9b3;font-size:8pt;color:#8a3a12;font-weight:700}
-.viz-risks .risque-pill:nth-child(3n+1){background:#ffe8e3;border-color:#ef9b89;color:#942f1f}
-.viz-risks .risque-pill:nth-child(3n+2){background:#fff1d8;border-color:#e8b65f;color:#84510a}
-.viz-risks .risque-pill:nth-child(3n){background:#f2eafa;border-color:#b99ad8;color:#663792}
-.data-body .risque-pill.none{background:#f2f4f8;border-color:#d9deef;color:#555}
-.data-body .source-note{font-size:8pt;color:#777;margin:3mm 0 0}
-.data-body .source-note a{color:#000091}
-.data-body .fiche-subhead{margin:3.5mm 0 2mm;font-size:8pt;letter-spacing:.05em;text-transform:uppercase;color:#000091}
-.data-body .donut-wrap{display:flex;align-items:center;gap:5mm;margin-bottom:2mm}
-.data-body .donut{width:24mm;height:24mm;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 6mm #fff,0 0 0 .25mm #eee}
-.data-body .donut-legend{display:flex;flex-direction:column;gap:1.2mm;min-width:0;flex:1}
-.data-body .donut-legend-row{display:flex;align-items:center;gap:2mm;font-size:8pt;color:#444}
-.data-body .donut-legend-row i{width:2.2mm;height:2.2mm;border-radius:50%;flex:0 0 auto}
-.data-body .donut-legend-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.data-body .donut-legend-row b{color:#10104b;font-size:8pt}
-.data-body .compare-bars{display:flex;flex-direction:column;gap:3mm}
-.data-body .compare-bar-row{font-size:9pt}
-.data-body .compare-bar-row>div:first-child{display:flex;justify-content:space-between;margin-bottom:.6mm;color:#555}
-.data-body .compare-bar-track{height:2.8mm;border-radius:1.5mm;background:#eef0f7;overflow:hidden}
-.data-body .compare-bar-fill{height:100%;border-radius:1.5mm;background:#000091}
-.commune-map-card{display:block;height:100%;margin:0;padding:1.5mm;background:#f2f3f6;border-radius:2.5mm;overflow:hidden}
-.commune-mini-map{height:100%;min-height:38mm;background:#e6e8eb;border:.2mm solid #c6cad2;border-radius:1.5mm;overflow:hidden}
+/* =====================================================================
+   PAGE DE FICHE A4 — un seul gabarit, quel que soit l'index de la page.
+   Aucune règle indexée par #dataPage-N : le rythme d'une thématique est
+   toujours le même, peu importe où elle tombe pour telle ou telle commune.
+   ===================================================================== */
+.data-page{width:210mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:10mm 13mm;overflow:hidden;display:flex;flex-direction:column}
+.data-page-head{display:flex;align-items:stretch;gap:4mm;margin-bottom:var(--s4);flex:none}
+.data-page-head img{width:22mm;height:auto;align-self:center}
+.data-page-head>div{flex:1;padding:4mm 5mm;background:var(--blue);color:#fff;min-width:0}
+.data-page-head span{display:block;font-size:8pt;font-weight:700;letter-spacing:.06em;color:#aab6e8}
+.data-page-head strong{display:block;font-size:19pt;line-height:1.15;margin-top:1.3mm;color:#fff;font-weight:700}
+.data-page-head em{display:block;font-style:normal;font-size:9.5pt;font-weight:700;margin-top:1mm;color:#fff;opacity:.92}
+
+.data-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--s3)}
+/* Chaque page contient 1 à 3 blocs : ils se répartissent la hauteur
+   disponible à parts égales, pour ne jamais laisser un grand vide en bas. */
+/* Chaque bloc garde sa hauteur naturelle (jamais de contenu comprimé ou
+   coupé) ; s'il est seul sur la page, il s'étire pour l'occuper pleinement. */
+.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:0 0 auto;display:flex;flex-direction:column}
+.data-body>*:only-child{flex:1}
+.data-body{justify-content:flex-start}
+
+.data-foot{margin-top:var(--s2);padding-top:var(--s1);border-top:.2mm solid var(--line);font-size:7pt;color:var(--muted);flex:none;display:flex;justify-content:space-between}
+
+/* ---- Carte de section (result-section / octe-theme) : un seul habillage ---- */
+.result-section,.octe-theme{margin:0;padding:var(--s3) var(--s4);border:.25mm solid var(--line);border-top:1mm solid var(--t,var(--blue));border-radius:var(--radius);background:#fff}
+.result-section h3,.octe-theme-head h2{margin:0 0 var(--s2);font-size:13.5pt;line-height:1.2;font-weight:700;color:var(--t-dark,var(--blue))}
+.octe-theme-head{display:flex;align-items:baseline;justify-content:space-between;gap:4mm;margin-bottom:var(--s2)}
+.octe-theme-head h2{margin:0}
+.octe-theme-head span{font-size:6.5pt;font-weight:700;color:var(--muted);letter-spacing:.06em;white-space:nowrap;text-transform:uppercase}
+.fiche-subhead{margin:var(--s2) 0 var(--s1);font-size:8pt;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t-dark,var(--blue))}
+.source-note{font-size:7.5pt;line-height:1.4;margin-top:var(--s2);color:var(--muted)}
+.source-note a{color:var(--blue)}
+.data-warning{padding:var(--s2) var(--s3);background:var(--warn-soft);border-left:1mm solid var(--warn);color:var(--warn);font-size:8pt;border-radius:0 var(--radius) var(--radius) 0}
+
+/* ---- Règle de graisse unique : les libellés ne sont jamais en gras ;
+   seuls les chiffres (dd / b des blocs de synthèse) le sont. Les chiffres
+   clés d'un thème reprennent en plus sa couleur d'accent. ---- */
+.data-grid>div{display:flex;justify-content:space-between;align-items:baseline;gap:6mm;padding:var(--s1) 0;border-top:.2mm solid var(--line-soft);font-size:9.5pt}
+.data-grid>div:first-child{border-top:0}
+.data-grid dt{color:var(--muted);font-weight:400;margin:0;min-width:0;overflow-wrap:normal;word-break:normal;hyphens:none}
+.data-grid dd{margin:0;font-weight:700;color:var(--ink);text-align:right;white-space:nowrap;flex:none}
+.data-grid>div:has(.value-meter){display:grid;grid-template-columns:1fr auto;column-gap:5mm;align-items:baseline}
+.value-meter{display:block;grid-column:1/-1;height:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
+.value-meter span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
+
+/* ---- Chiffres clés (première page) : mise en évidence explicite ---- */
+.viz-key{display:grid;grid-template-columns:76mm minmax(0,1fr);grid-template-rows:auto minmax(56mm,1fr);gap:var(--s2) var(--s3)}
+.viz-key>h3{grid-column:1/-1;grid-row:1}
+.viz-key>.commune-map-card{grid-column:1;grid-row:2}
+.viz-key>.data-grid{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s2);align-content:stretch;min-width:0}
+.viz-key>.source-note{grid-column:1/-1}
+.viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:0;padding:var(--s2) var(--s3);border:0;border-left:1mm solid var(--blue);border-radius:0 var(--radius) var(--radius) 0;background:var(--paper)}
+.viz-key .data-grid dt{font-size:8pt}
+.viz-key .data-grid dd{font-size:14pt;line-height:1.15;margin-top:1.5mm;color:var(--blue);text-align:left;white-space:normal;overflow-wrap:anywhere}
+.commune-map-card{display:block;height:100%;margin:0;padding:1.5mm;background:var(--paper);border:.25mm solid var(--line);border-radius:var(--radius);overflow:hidden}
+.commune-mini-map{height:100%;min-height:38mm;background:#e6e8eb;border-radius:1.4mm;overflow:hidden}
 .commune-mini-map .leaflet-tile-pane{filter:grayscale(1) contrast(.82) brightness(1.08);opacity:.82}
-.data-body .viz-key{display:grid;grid-template-columns:68mm minmax(0,1fr);grid-template-rows:auto auto;gap:3mm 5mm}.data-body .viz-key>h3{grid-column:1/-1;grid-row:1}.data-body .viz-key>.commune-map-card{grid-column:1;grid-row:2}.data-body .viz-key>.data-grid{grid-column:2;grid-row:2;align-content:stretch;min-width:0}.data-body .viz-key>.profile-chart,.data-body .viz-key>.source-note{grid-column:1/-1}.data-body .viz-key .data-grid>div{min-width:0;padding:3.5mm}.data-body .viz-key .data-grid dt{font-size:8.5pt}.data-body .viz-key .data-grid dd{font-size:10.5pt;line-height:1.2;overflow-wrap:anywhere;word-break:normal}
-.viz-governance .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm}.data-body .viz-governance .data-grid>div{display:block;padding:2mm 2.5mm;border:0;border-left:.8mm solid var(--theme);background:#fff}.viz-governance .data-grid dt,.viz-governance .data-grid dd{text-align:left}.viz-governance .data-grid dd{margin-top:.8mm}.viz-governance .data-grid>div:last-child{grid-column:1/-1}
-.age-structure{margin:2mm 0 4mm}.age-stack{display:flex;height:10mm;border-radius:1.5mm;overflow:hidden}.age-stack i{display:block;height:100%}.age-labels{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;margin-top:2.5mm}.age-labels>div{display:grid;grid-template-columns:2.4mm 1fr auto;gap:1.5mm;align-items:center;font-size:8.5pt}.age-labels i{width:2.4mm;height:2.4mm;border-radius:50%}.age-labels span{color:#555}.age-labels b{color:#10104b;white-space:nowrap}
-.housing-donut{display:grid;grid-template-columns:43mm 1fr;align-items:center;gap:7mm;padding:5mm 6mm;border-radius:3mm;background:#fff}.housing-donut svg{width:40mm;height:40mm}.housing-donut .donut-legend{gap:2.5mm}.housing-donut .donut-legend-row{font-size:9pt}.housing-donut .donut-legend-row b{font-size:9pt}
-.housing-radials{display:grid;grid-template-columns:repeat(2,1fr);gap:4mm 6mm;margin-top:6mm;padding-top:5mm;border-top:.2mm solid #d6d9e4}.housing-radials>div{display:grid;grid-template-columns:auto 1fr;align-items:end;gap:1.5mm 3mm;padding:4mm;background:#fff;border-radius:2mm;min-width:0}.housing-radials b{font-size:16pt;color:#4d277d;white-space:nowrap}.housing-radials span{font-size:8.5pt;line-height:1.25;color:#555}.housing-radials i{grid-column:1/-1;display:block;height:2.4mm;border-radius:2mm;background:#e4e0eb;overflow:hidden}.housing-radials em{display:block;height:100%;border-radius:2mm;background:#7b4ab5}
-.mobility-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-bottom:5mm}.mobility-kpis>div{padding:5mm 4mm;border-radius:2.5mm;background:#fff;border-bottom:1.2mm solid #0063cb}.mobility-kpis b,.mobility-kpis span{display:block}.mobility-kpis b{font-size:18pt;color:#004b9b}.mobility-kpis span{margin-top:1.5mm;font-size:8.5pt;line-height:1.25;color:#55616d}.service-timeline{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:3mm;margin:1mm 0 5mm;padding:4mm 5mm;background:#fff;border-radius:2.5mm}.service-timeline b{font-size:11pt;color:#004b9b}.service-timeline i{height:.8mm;background:#8ebbe7;position:relative}.service-timeline i:before,.service-timeline i:after{content:"";position:absolute;top:50%;width:3mm;height:3mm;border-radius:50%;background:#0063cb;transform:translateY(-50%)}.service-timeline i:before{left:0}.service-timeline i:after{right:0}.service-timeline span{grid-column:1/-1;text-align:center;font-size:7.5pt;color:#66717d}.mobility-lines{display:grid;grid-template-columns:repeat(2,1fr);gap:3mm}.mobility-lines>div{display:grid;grid-template-columns:27mm 1fr;align-items:center;padding:4mm;border:.25mm solid #cbdff2;border-left:1mm solid #0063cb;background:#fff}.mobility-lines>div>span{font-size:13pt;font-weight:700;color:#004b9b}.mobility-lines section{display:flex;flex-direction:column;gap:1mm}.mobility-lines b{font-size:9pt;color:#202838}.mobility-lines small{font-size:7.7pt;line-height:1.3;color:#66717d}
-.economy-viz{display:grid;grid-template-columns:1fr 1.2fr;gap:6mm}.economy-headlines{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.economy-headlines>div{padding:7mm 5mm;background:#fff;border-top:1.4mm solid #b25b12}.economy-headlines i,.economy-headlines b,.economy-headlines span{display:block}.economy-headlines i{font-style:normal;font-size:6.5pt;letter-spacing:.08em;color:#8d4a12}.economy-headlines b{margin:4mm 0 1mm;font-size:23pt;color:#7a3b08}.economy-headlines span{font-size:8pt;color:#67584d}.economy-context{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.economy-context>div{display:flex;flex-direction:column;justify-content:center;gap:2mm;padding:4mm;background:#fff;border-left:.9mm solid #e4a35f}.economy-context span{font-size:8pt;line-height:1.25;color:#67584d}.economy-context b{font-size:11pt;color:#7a3b08;white-space:nowrap}
-.nearest-stops{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5mm}.nearest-stops>strong,.nearest-stops>span{grid-column:1/-1}.nearest-stops>strong{font-size:13pt;color:#004b9b}.nearest-stops>span{font-size:8pt;color:#66717d}.nearest-stops>div{padding:4mm;border-left:1mm solid #0063cb;background:#fff}.nearest-stops b,.nearest-stops small{display:block}.nearest-stops b{font-size:10pt;color:#173f7a}.nearest-stops small{margin-top:1.2mm;font-size:8pt;color:#66717d}
-.land-overview{display:grid;grid-template-columns:31mm 1fr;gap:5mm;align-items:center}
-.land-total{height:31mm;border-radius:50%;background:#edf8f1;border:2.5mm solid #26875a;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.land-total b{font-size:10pt;color:#145a3b}.land-total span{font-size:5.8pt;color:#526057;line-height:1.1}
-.land-composition{min-width:0}.land-band{display:flex;height:7mm;overflow:hidden;border-radius:1.5mm;background:#e5e8ed}.land-band i{display:block;height:100%;min-width:.5mm}
-.land-legend{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm 3mm;margin-top:2.5mm}.land-legend>div{display:grid;grid-template-columns:2mm 1fr auto;column-gap:1.5mm;align-items:start;min-width:0}.land-legend>div>i{width:2mm;height:2mm;border-radius:50%;margin-top:.4mm}.land-legend span{font-size:6.3pt;color:#555;line-height:1.15}.land-legend b{font-size:6.8pt;color:#122b20;white-space:nowrap}.land-legend small{grid-column:2/-1;font-size:5.6pt;color:#777;margin-top:.4mm}
-.data-foot{margin-top:2.5mm;padding-top:1.5mm;border-top:.2mm solid #d9deef;font-size:7pt;color:#666;flex:none;display:flex;justify-content:space-between}
+.commune-mini-map-image{display:block;width:100%;height:100%;object-fit:cover}
 
-.octe-theme{margin:0 0 2.5mm;break-inside:avoid;padding:3.5mm 4mm;border:.3mm solid #d6daea;border-top:1.5mm solid #000091;border-radius:3mm;background:#fafbff}
-.octe-theme:last-child{margin-bottom:0}
-.octe-theme-head{display:flex;align-items:center;justify-content:space-between;gap:4mm;margin-bottom:3mm;padding-bottom:2mm;border-bottom:.35mm solid #b9c0df}
-.octe-theme h2{margin:0;padding:0;background:none;border:0;color:#000091;font-size:12.5pt}
-.octe-theme-head span{font-size:6.5pt;font-weight:700;color:#666;letter-spacing:.05em;white-space:nowrap}
-.octe-data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5mm}
-.octe-data-item{min-width:0;padding:2.5mm 2.8mm;border-left:.8mm solid #000091;background:#fff}
-.octe-data-item dt{font-size:9.5pt;color:#666;line-height:1.28;overflow-wrap:normal;word-break:normal;hyphens:none}
-.octe-data-item dd{margin:1.2mm 0 0;font-size:10.5pt;font-weight:700;color:#10104b;line-height:1.28;overflow-wrap:normal;word-break:normal;hyphens:none}
-.octe-data-item p{margin:1.2mm 0 0;font-size:8pt;line-height:1.3;color:#60657a}
-.octe-unavailable{display:grid;grid-template-columns:48mm 1fr;gap:4mm;margin-top:3mm;padding:3mm;background:#f0f1f5;color:#555;font-size:8pt;line-height:1.45}.octe-unavailable b{color:#34394d}.octe-unavailable span{overflow-wrap:normal;word-break:normal;hyphens:none}
-.octe-theme-focus .octe-data-grid{grid-template-columns:1fr}
-.octe-theme-focus .octe-data-item{display:grid;grid-template-columns:minmax(42mm,1fr) auto;align-items:center;column-gap:5mm;padding:2.5mm 3mm;border-left-width:1.2mm}
-.octe-theme-focus .octe-data-item dt{font-size:8pt;color:#30364d}.octe-theme-focus .octe-data-item dd{grid-column:2;grid-row:1;font-size:16pt;color:#000091;margin:0;white-space:nowrap}.octe-theme-focus .octe-data-item p{grid-column:1/-1;max-width:135mm}
-.octe-complements{columns:2;column-gap:5mm;margin-top:2mm;padding-top:1.5mm;border-top:.2mm solid #d9deef}.octe-complements p{break-inside:avoid;margin:0 0 1mm;padding-left:2mm;border-left:.6mm solid #8d95bd;font-size:6.2pt;line-height:1.25;color:#40455b}
-.octe-data-note{grid-column:span 1;border-left-color:#9ca3c7;background:#f2f3f9}
-.octe-status{display:inline-block;padding:1mm 2mm;border-radius:4mm;background:#e7f6ec;color:#18753c!important}
-.octe-data-item>i{display:block;height:1.3mm;margin-top:1.5mm;border-radius:2mm;background:#e1e3ec;overflow:hidden}
-.octe-data-item>i span{display:block;height:100%;border-radius:2mm;background:#000091}
-.octe-status-matrix{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;margin-bottom:4mm}
-.octe-status-matrix>div{min-width:0;padding:2.8mm 3mm;border-top:1mm solid #7b819b;background:#fff}
-.octe-status-matrix span,.octe-status-matrix b{display:block}
-.octe-status-matrix span{font-size:8.5pt;line-height:1.3;color:#555;overflow-wrap:normal;word-break:normal;hyphens:none}
-.octe-status-matrix b{margin-top:1.2mm;font-size:9pt;text-transform:uppercase}
-.octe-status-matrix .is-positive{border-top-color:#18753c;background:#eef8f1}
-.octe-status-matrix .is-positive b{color:#18753c}
-.octe-status-matrix .is-negative{border-top-color:#c43d4f;background:#fff0f2}
-.octe-status-matrix .is-negative b{color:#a02d3d}
-.octe-status-summary{display:none}
-.octe-status-summary>div{display:flex;height:4mm;border-radius:3mm;overflow:hidden;background:#e5e7ef}
-.octe-status-summary>div span{background:#18753c}
-.octe-status-summary>div i{background:#c43d4f}
-.octe-status-summary p{margin:0;font-size:7pt;color:#555}
-.octe-status-summary p b{color:#10104b;font-size:9pt;margin-right:1mm}
-.patrimony-viz{display:grid;grid-template-columns:1.35fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:6mm;min-height:76mm;margin:6mm 0 7mm}
+/* ---- Gouvernance ---- */
+.viz-governance .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s1) var(--s3)}
+.viz-governance .data-grid>div{display:block;padding:var(--s1) var(--s2);border:0;border-left:.8mm solid var(--t);background:var(--paper)}
+.viz-governance .data-grid dt,.viz-governance .data-grid dd{text-align:left;display:block}
+.viz-governance .data-grid dd{margin-top:.8mm;white-space:normal}
+.viz-governance .data-grid>div:last-child{grid-column:1/-1}
+
+/* ---- Sécurité : registre sobre, densité plus haute ---- */
+.viz-security .data-grid>div{padding:1.2mm 0;font-size:8.5pt}
+
+/* =====================================================================
+   POPULATION — chiffres saillants + une seule famille de rubans (âge,
+   diplôme, déplacements, CSP) partageant la même anatomie.
+   ===================================================================== */
+.demography-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin-bottom:var(--s2)}
+.demography-kpis>div{padding:var(--s2);border-radius:var(--radius);background:var(--t-soft)}
+.demography-kpis span{display:block;font-size:7.5pt;color:var(--muted)}
+.demography-kpis b{display:block;margin-top:1.2mm;font-size:12pt;color:var(--t-dark)}
+.demography-kpis .is-primary{background:var(--t-soft)}
+.demography-kpis .is-primary b{font-size:17pt}
+
+.demography-chart{margin:0 0 var(--s2)}
+.demography-chart h4{margin:0 0 var(--s1);font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.age-structure{margin:0}
+.age-stack{display:flex;height:9mm;border-radius:1.5mm;overflow:hidden;gap:.4mm}
+.age-stack i{display:block;height:100%}
+.age-labels{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin-top:var(--s1)}
+.age-labels>div{display:grid;grid-template-columns:2.4mm 1fr auto;gap:1.5mm;align-items:center;font-size:8.5pt}
+.age-labels i{width:2.4mm;height:2.4mm;border-radius:50%}
+.age-labels span{color:var(--muted)}
+.age-labels b{color:var(--ink);white-space:nowrap}
+.family-chart{display:flex;flex-direction:column;gap:1.5mm}
+.family-bar{display:grid;grid-template-columns:34mm 1fr auto;align-items:center;gap:2mm;font-size:8pt}
+.family-bar i{height:2.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
+.family-bar em{display:block;height:100%;border-radius:2mm}
+.family-bar b{color:var(--ink);white-space:nowrap}
+
+.territory-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);margin-top:var(--s1)}
+.territory-profile{padding:var(--s2);border:.25mm solid var(--line);border-radius:var(--radius);background:#fff;min-width:0}
+.territory-profile h4{margin:0 0 var(--s1);font-size:7.5pt;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.territory-profile>div{display:grid;grid-template-columns:minmax(20mm,1fr) .8fr auto;align-items:center;gap:1.5mm;margin:1mm 0;font-size:7pt}
+.territory-profile i{height:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
+.territory-profile em{display:block;height:100%;border-radius:2mm;background:var(--t-dark)}
+.territory-profile b{font-size:7pt;color:var(--ink);font-weight:700;white-space:nowrap}
+
+/* =====================================================================
+   OCCUPATION DU SOL — anneau + bande, palette d'un seul dégradé thématique
+   ===================================================================== */
+.land-overview{display:grid;grid-template-columns:32mm 1fr;gap:var(--s3);align-items:center}
+.land-total{height:32mm;border-radius:50%;background:var(--t-soft);border:2.5mm solid var(--t);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.land-total b{font-size:10.5pt;color:var(--t-dark)}
+.land-total span{font-size:6pt;color:var(--muted);line-height:1.15}
+.land-composition{min-width:0}
+.land-band{display:flex;height:7mm;overflow:hidden;border-radius:1.5mm;background:var(--line-soft);gap:.4mm}
+.land-band i{display:block;height:100%;min-width:.5mm}
+.land-legend{display:flex;flex-direction:column;gap:1.6mm;margin-top:var(--s2)}
+.land-legend>div{display:grid;grid-template-columns:2.4mm 1fr auto;column-gap:2mm;align-items:baseline;min-width:0}
+.land-legend>div>i{width:2.4mm;height:2.4mm;border-radius:50%}
+.land-legend span{font-size:8pt;color:var(--muted);line-height:1.2}
+.land-legend b{font-size:8.5pt;color:var(--ink);white-space:nowrap}
+.land-legend small{grid-column:2/-1;font-size:6.8pt;color:var(--muted);margin-top:.2mm}
+
+/* =====================================================================
+   LOGEMENT — un seul dégradé violet, cartes de hauteur égale
+   ===================================================================== */
+.housing-market{margin:0 0 var(--s3)}
+.housing-market h4,.housing-production h4,.housing-heating h4,.economy-detail h4{margin:0 0 var(--s2);font-size:9pt;font-weight:700;color:var(--t-dark)}
+.housing-market>div{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.housing-market article{display:flex;min-height:22mm;flex-direction:column;justify-content:center;padding:var(--s2);background:var(--t-soft);border-radius:var(--radius)}
+.housing-market article span{font-size:7.5pt;color:var(--muted)}
+.housing-market article b{font-size:15pt;line-height:1.15;color:var(--t-dark)}
+.housing-market article small{margin-top:1.2mm;font-size:7pt;color:var(--muted)}
+.housing-market>p{margin:var(--s1) 0 0;font-size:6.8pt;line-height:1.35;color:var(--muted)}
+
+.housing-donut{display:grid;grid-template-columns:34mm 1fr;align-items:center;gap:var(--s3);padding:var(--s2) var(--s3);border-radius:var(--radius);background:#fff}
+.housing-donut svg{width:32mm;height:32mm}
+.donut-legend{display:flex;flex-direction:column;gap:1.4mm;min-width:0}
+.donut-legend-row{display:flex;align-items:center;gap:2mm;font-size:8.5pt;color:var(--muted)}
+.donut-legend-row i{width:2.4mm;height:2.4mm;border-radius:50%;flex:0 0 auto}
+.donut-legend-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.donut-legend-row b{color:var(--ink);font-size:8.5pt;white-space:nowrap}
+
+.housing-radials{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2);margin-top:var(--s2)}
+.housing-radials>div{display:flex;flex-direction:column;gap:1mm;padding:var(--s2);border-left:.8mm solid var(--t);background:var(--paper);border-radius:0 var(--radius) var(--radius) 0;min-width:0}
+.housing-radials b{font-size:12pt;color:var(--t-dark);white-space:nowrap}
+.housing-radials span{font-size:7pt;line-height:1.2;color:var(--muted)}
+.housing-radials i{display:block;height:1.6mm;border-radius:2mm;background:var(--line-soft);overflow:hidden;margin-top:.4mm}
+.housing-radials em{display:block;height:100%;border-radius:2mm;background:var(--t)}
+
+.housing-production{margin-top:0}
+.production-bars{height:30mm;display:flex;align-items:stretch;gap:var(--s2)}
+.production-bars article{flex:1;display:grid;grid-template-rows:auto 1fr auto;gap:1mm;text-align:center;min-width:0}
+.production-bars article>span{font-size:7pt;color:var(--muted)}
+.production-bars article>i{display:flex;align-items:end;justify-content:center;gap:1.5mm;border-bottom:.3mm solid var(--line)}
+.production-bars em,.production-bars strong{display:block;width:5mm;min-height:.8mm;border-radius:.5mm .5mm 0 0}
+.production-bars em{background:var(--t)}
+.production-bars strong{background:var(--t-soft);border:.2mm solid var(--t)}
+.production-bars small{font-size:6.2pt;line-height:1.2;color:var(--muted)}
+.housing-production>p{display:flex;align-items:center;gap:1.5mm;margin:var(--s1) 0 0;font-size:6.8pt;color:var(--muted)}
+.housing-production>p i,.housing-production>p b{display:inline-block;width:3mm;height:3mm;border-radius:.5mm}
+.housing-production>p i{background:var(--t)}
+.housing-production>p b{background:var(--t-soft);border:.2mm solid var(--t)}
+
+.housing-heating{margin-top:0}
+.housing-heating>div{display:grid;grid-template-columns:40mm 1fr 15mm;align-items:center;gap:2mm;margin:1.4mm 0}
+.housing-heating span{font-size:7.5pt;color:var(--muted)}
+.housing-heating i{height:2mm;background:var(--line-soft);border-radius:2mm;overflow:hidden}
+.housing-heating em{display:block;height:100%;background:var(--t)}
+.housing-heating b{font-size:7.5pt;text-align:right;color:var(--t-dark)}
+
+/* =====================================================================
+   ÉCONOMIE — un seul dégradé ambre
+   ===================================================================== */
+.economy-viz{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"head bars" "context context";gap:var(--s3)}
+.economy-viz:not(:has(.economy-bars)) .economy-headlines{grid-column:1/-1}
+.economy-headlines{grid-area:head;display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+.economy-headlines>div{min-height:38mm;padding:var(--s2);display:flex;flex-direction:column;justify-content:space-between;background:var(--t-soft);border-radius:var(--radius)}
+.economy-headlines span{font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.economy-headlines b{margin:1.5mm 0;font-size:21pt;line-height:1;color:var(--t-dark)}
+.economy-headlines small{font-size:7.5pt;color:var(--muted)}
+.economy-bars{grid-area:bars;display:flex;flex-direction:column;justify-content:center;gap:var(--s2);padding:var(--s2)}
+.economy-bars>div{display:grid;grid-template-columns:1fr auto;gap:1.5mm 4mm;align-items:baseline}
+.economy-bars span{font-size:8pt;color:var(--muted)}
+.economy-bars b{font-size:11pt;color:var(--t-dark)}
+.economy-bars i{grid-column:1/-1;height:2.6mm;background:var(--line-soft);border-radius:2mm;overflow:hidden}
+.economy-bars em{display:block;height:100%;background:var(--t);border-radius:2mm}
+.economy-context{grid-area:context;display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.economy-context>div{min-height:20mm;display:flex;flex-direction:column;justify-content:center;gap:1.2mm;padding:var(--s2);border-left:.9mm solid var(--t);background:var(--paper)}
+.economy-context span{font-size:7.5pt;color:var(--muted)}
+.economy-context b{font-size:11pt;color:var(--t-dark)}
+
+.economy-detail{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--s3);margin-top:var(--s3)}
+.sector-viz,.size-viz{padding:var(--s3);background:var(--t-soft);border-radius:var(--radius)}
+.sector-viz>div{display:grid;grid-template-columns:44mm 1fr 13mm;gap:2mm;align-items:center;margin:1.4mm 0}
+.sector-viz span{font-size:7.2pt;color:var(--muted)}
+.sector-viz>div>i{height:2mm;background:#fff;border-radius:2mm;overflow:hidden}
+.sector-viz em{display:block;height:100%;background:var(--t)}
+.sector-viz b{font-size:7.2pt;text-align:right;color:var(--t-dark)}
+.size-band{display:flex;height:11mm;margin-bottom:var(--s1);overflow:hidden;border-radius:1.5mm;gap:.4mm}
+.size-band i{display:block;background:var(--c)}
+.size-viz p{display:grid;grid-template-columns:3mm 1fr auto;gap:1.5mm;align-items:center;margin:1mm 0;font-size:7pt}
+.size-viz p i{width:3mm;height:3mm;border-radius:.6mm;background:var(--c)}
+.size-viz p b{color:var(--t-dark)}
+
+/* =====================================================================
+   MOBILITÉ — bleu transport distinct du bleu institutionnel
+   ===================================================================== */
+.mobility-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin-bottom:var(--s2)}
+.mobility-kpis>div{padding:var(--s2);border-radius:var(--radius);background:var(--t-soft)}
+.mobility-kpis b,.mobility-kpis span{display:block}
+.mobility-kpis b{font-size:17pt;color:var(--t-dark)}
+.mobility-kpis span{margin-top:1.3mm;font-size:7.5pt;line-height:1.2;color:var(--muted)}
+.service-timeline{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);margin-bottom:var(--s2);padding:var(--s2) var(--s3);background:var(--paper);border-radius:var(--radius)}
+.service-timeline b{font-size:10.5pt;color:var(--t-dark)}
+.service-timeline i{height:.8mm;background:var(--t-soft);position:relative;border-radius:1mm}
+.service-timeline i:before,.service-timeline i:after{content:"";position:absolute;top:50%;width:3mm;height:3mm;border-radius:50%;background:var(--t);transform:translateY(-50%)}
+.service-timeline i:before{left:0}
+.service-timeline i:after{right:0}
+.service-timeline span{grid-column:1/-1;text-align:center;font-size:7pt;color:var(--muted)}
+.mobility-lines{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2)}
+.mobility-lines>div{display:grid;grid-template-columns:26mm 1fr;align-items:center;padding:var(--s2);border-left:1mm solid var(--t);background:var(--paper);border-radius:0 var(--radius) var(--radius) 0}
+.mobility-lines>div>span{font-size:12pt;font-weight:700;color:var(--t-dark)}
+.mobility-lines section{display:flex;flex-direction:column;gap:.8mm}
+.mobility-lines b{font-size:8.5pt;color:var(--ink)}
+.mobility-lines small{font-size:7.3pt;line-height:1.25;color:var(--muted)}
+.nearest-stops{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.nearest-stops>strong,.nearest-stops>span{grid-column:1/-1}
+.nearest-stops>strong{font-size:12pt;color:var(--t-dark)}
+.nearest-stops>span{font-size:7.5pt;color:var(--muted)}
+.nearest-stops>div{padding:var(--s2);border-left:1mm solid var(--t);background:var(--paper)}
+.nearest-stops b,.nearest-stops small{display:block}
+.nearest-stops b{font-size:9.5pt;color:var(--ink)}
+.nearest-stops small{margin-top:1mm;font-size:7.5pt;color:var(--muted)}
+
+/* =====================================================================
+   RISQUES & SÉCURITÉ — sémantique rouge réservée à l'alerte
+   ===================================================================== */
+.risque-pill{display:inline-flex;padding:1.6mm 3.5mm;margin:0 var(--s1) var(--s1) 0;border-radius:6mm;background:var(--t-soft);border:.2mm solid var(--t);font-size:8pt;color:var(--t-dark);font-weight:700}
+.risque-pill.none{background:var(--line-soft);border-color:var(--line);color:var(--muted);font-weight:400}
+
+/* =====================================================================
+   PATRIMOINE — vert, identité + anneaux de chiffres
+   ===================================================================== */
+.patrimony-viz{display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s3);min-height:72mm}
 .patrimony-viz.no-znieff .patrimony-identity.secondary{grid-row:1/-1;justify-content:center}
-.patrimony-identity{grid-row:1/-1;padding:7mm;border-radius:3mm;background:#18734b;color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
-.patrimony-identity span{font-size:9pt;opacity:.88}.patrimony-identity b{margin-top:2.5mm;font-size:19pt;line-height:1.1}.patrimony-identity small{margin-top:2.5mm;font-size:7.3pt;line-height:1.35;opacity:.85}
-.patrimony-identity.secondary{grid-column:3;grid-row:2;padding:4mm;background:#edf8f1;color:#145a3b;border:.3mm solid #b8dbc7}.patrimony-identity.secondary span{font-size:8pt}.patrimony-identity.secondary b{font-size:12pt;margin-top:1.2mm}.patrimony-identity.secondary small{margin-top:1.2mm;font-size:6.6pt;opacity:.8}
-.patrimony-ring{grid-row:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4mm;border-radius:3mm;background:#fff;border:.3mm solid #cfe3d7;text-align:center}
-.patrimony-ring i{width:27mm;height:27mm;border-radius:50%;border:3mm solid #26875a;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:17pt;font-weight:700;color:#145a3b}.patrimony-ring span{margin-top:3mm;font-size:8pt;line-height:1.25;color:#526057}
-.patrimony-ring.alt{grid-column:3;grid-row:1}.patrimony-ring.alt i{width:20mm;height:20mm;border-width:2.3mm;font-size:12pt}.patrimony-ring.alt span{margin-top:1.5mm;font-size:7.2pt}
-#dataPage-1 .result-section,#dataPage-2 .result-section,#dataPage-3 .octe-theme,#dataPage-3 .result-section,#dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-8 .result-section,#dataPage-9 .octe-theme,#dataPage-9 .result-section{margin-bottom:6mm}
-#dataPage-1 .viz-demography,#dataPage-2 .viz-housing,#dataPage-3 .octe-theme,#dataPage-3 .viz-land,#dataPage-4 .viz-economy,#dataPage-8 .octe-theme{padding:6mm 7mm}
-#dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-9 .octe-theme,#dataPage-9 .result-section{padding:4.5mm 5mm}
-#dataPage-9 .data-body{display:flex;flex-direction:column;gap:7mm;padding:2mm 0 4mm}#dataPage-9 .octe-theme,#dataPage-9 .viz-risks,#dataPage-9 .viz-security{margin:0;padding:6mm 7mm}#dataPage-9 .viz-risks .risque-pill{padding:2.2mm 4mm;margin:0 2.5mm 2.5mm 0}#dataPage-9 .viz-security .data-grid>div{padding:2.8mm 0;font-size:8.8pt}#dataPage-9 .viz-security .source-note{margin-top:3mm}
-#dataPage-0 .result-section{padding:3mm 4mm;margin-bottom:2mm}
-#dataPage-0 .octe-theme{margin-top:1.5mm}
-.octe-badge{display:inline-block;margin-bottom:3mm;padding:1.5mm 2.5mm;border-radius:4mm;background:#eef0ff;color:#000091;font-size:6.5pt;font-weight:700;letter-spacing:.06em}
-.octe-theme h2{margin:0;color:#000091;font-size:12.5pt}
-.octe-lines{columns:2;column-gap:7mm;column-rule:.2mm solid #e3e5ef}
-.octe-lines p{margin:0 0 .5mm;padding:.8mm 1.2mm;break-inside:avoid;font-size:6.15pt;line-height:1.22;color:#252535;border-left:.5mm solid #dfe2f2;background:#f8f9fc}
-.octe-lines p:nth-child(3n+1){border-left-color:#000091}
-.data-warning{padding:3mm;background:#fff4e5;border-left:1mm solid #e4794a;font-size:8pt}
-.complete-cover{min-height:105mm;padding:18mm 12mm;background:linear-gradient(145deg,#000091,#3a3a9f);color:#fff;display:flex;flex-direction:column;justify-content:center;border-radius:4mm}
-.complete-cover p{font-size:8pt;letter-spacing:.13em;font-weight:700;margin:0 0 7mm}
-.complete-cover h1{font-size:31pt;line-height:1.05;margin:0 0 4mm}
-.complete-cover strong{font-size:11pt;margin-bottom:11mm}
-.complete-cover span{font-size:11pt;line-height:1.5;max-width:135mm}
-.cover-keyfigures{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:12mm}
-.cover-keyfigures div{min-width:0;padding:4mm;background:#ffffff12;border:.25mm solid #ffffff44;border-radius:3mm}
-.cover-keyfigures i{display:block;width:100%;height:1.5mm;margin-bottom:3mm;border-radius:2mm;background:var(--accent)}
-.cover-keyfigures b,.cover-keyfigures small{display:block}
-.cover-keyfigures b{font-size:13pt;line-height:1.15;color:#fff}
-.cover-keyfigures small{margin-top:1mm;font-size:7pt;color:#e4e4ff}
-.method-box{margin-top:9mm;padding:7mm;border:.3mm solid #c7c9e2;border-radius:3mm;color:#333}
-.method-box h2{margin:0 0 3mm;color:#000091;font-size:12pt}
-.method-box p{font-size:9pt;line-height:1.55;margin:2mm 0}
+.patrimony-identity{grid-row:1/-1;padding:var(--s3);border-radius:var(--radius);background:var(--t-dark);color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
+.patrimony-identity span{font-size:8.5pt;opacity:.85}
+.patrimony-identity b{margin-top:2mm;font-size:17pt;line-height:1.12}
+.patrimony-identity small{margin-top:2mm;font-size:7pt;line-height:1.3;opacity:.85}
+.patrimony-identity.secondary{grid-column:3;grid-row:2;padding:var(--s2);background:var(--t-soft);color:var(--t-dark);border:.3mm solid var(--line)}
+.patrimony-identity.secondary span{font-size:7.5pt;opacity:1;color:var(--muted)}
+.patrimony-identity.secondary b{font-size:11.5pt;margin-top:1mm}
+.patrimony-ring{grid-row:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--s2);border-radius:var(--radius);background:#fff;border:.3mm solid var(--line);text-align:center}
+.patrimony-ring i{width:25mm;height:25mm;border-radius:50%;border:2.8mm solid var(--t);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:16pt;font-weight:700;color:var(--t-dark)}
+.patrimony-ring span{margin-top:2.5mm;font-size:7.5pt;line-height:1.2;color:var(--muted)}
+.patrimony-ring.alt{grid-column:3;grid-row:1}
+.patrimony-ring.alt i{width:19mm;height:19mm;border-width:2.2mm;font-size:11pt}
+.patrimony-ring.alt span{margin-top:1.4mm;font-size:6.8pt}
 
+/* =====================================================================
+   OCTE — indicateurs officiels de la source, même grammaire visuelle
+   ===================================================================== */
+.octe-data-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(52mm,1fr));gap:var(--s1)}
+.octe-data-item{min-width:0;padding:var(--s2);border-left:.8mm solid var(--t,var(--blue));background:var(--paper)}
+.octe-data-item dt{font-size:8.5pt;color:var(--muted);line-height:1.28;overflow-wrap:normal;word-break:normal;hyphens:none;margin:0}
+.octe-data-item dd{margin:1.2mm 0 0;font-size:11pt;font-weight:700;color:var(--t-dark,var(--ink));line-height:1.25;overflow-wrap:normal;word-break:normal;hyphens:none}
+.octe-data-item p{margin:1.2mm 0 0;font-size:7.5pt;line-height:1.3;color:var(--muted)}
+.octe-data-item>i{display:block;height:1.3mm;margin-top:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
+.octe-data-item>i span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
+.octe-status{display:inline-block;padding:.8mm 2mm;border-radius:4mm;background:var(--good-soft);color:var(--good)!important;font-size:9pt}
+
+.octe-theme-focus .octe-data-grid{grid-template-columns:1fr}
+.octe-theme-focus .octe-data-item{display:grid;grid-template-columns:minmax(42mm,1fr) auto;align-items:baseline;column-gap:5mm;padding:var(--s2)}
+.octe-theme-focus .octe-data-item dt{font-size:8.5pt;color:var(--ink)}
+.octe-theme-focus .octe-data-item dd{grid-column:2;grid-row:1;font-size:15pt;color:var(--t-dark);margin:0;white-space:nowrap}
+.octe-theme-focus .octe-data-item p{grid-column:1/-1;max-width:135mm}
+
+.octe-status-matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(48mm,1fr));gap:var(--s1);margin-bottom:var(--s2)}
+.octe-status-matrix>div{min-width:0;padding:var(--s2);border-top:1mm solid var(--muted);background:var(--paper)}
+.octe-status-matrix span,.octe-status-matrix b{display:block}
+.octe-status-matrix span{font-size:8.5pt;line-height:1.3;color:var(--muted);overflow-wrap:normal;word-break:normal;hyphens:none}
+.octe-status-matrix b{margin-top:1.2mm;font-size:9pt;text-transform:uppercase}
+.octe-status-matrix .is-positive{border-top-color:var(--good);background:var(--good-soft)}
+.octe-status-matrix .is-positive b{color:var(--good)}
+.octe-status-matrix .is-negative{border-top-color:var(--bad);background:var(--bad-soft)}
+.octe-status-matrix .is-negative b{color:var(--bad)}
+.octe-status-summary{display:none}
+
+.octe-mobility .octe-data-grid{grid-template-columns:repeat(2,1fr)}
+.octe-planning .octe-status-matrix{grid-template-columns:repeat(3,1fr)}
+
+/* =====================================================================
+   SYNTHÈSE (fiche synthétique, une page A4)
+   ===================================================================== */
 .summary-page{padding:9mm 11mm}
-.summary-page .data-page-head{margin-bottom:3mm;padding-bottom:2.5mm;align-items:center}
-.summary-page .data-page-head img{width:23mm}
-.summary-page .data-page-head>div{display:grid;grid-template-columns:auto 1fr;column-gap:5mm;align-items:baseline;flex:1}.summary-page .data-page-head span{grid-column:1/-1}.summary-page .data-page-head strong{font-size:19pt;margin-top:1.5mm}.summary-page .data-page-head em{font-size:8pt;color:#555;margin:0;text-transform:uppercase;letter-spacing:.08em}
-.summary-hero{padding:2.8mm 6mm;margin-bottom:1.5mm;background:#000091;color:#fff;border-radius:3mm}
-.summary-hero p{margin:0 0 1mm;font-size:6.5pt;letter-spacing:.12em;font-weight:700}
-.summary-hero h1{margin:0;font-size:22pt;line-height:1.05}
-.summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:1.5mm;padding:1.5mm 3mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
-.summary-governance h2{margin:0;color:#000091;font-size:8pt;text-transform:uppercase;letter-spacing:.05em}
-.summary-governance>div{display:grid;grid-template-columns:repeat(2,1fr);gap:6mm}
+.summary-page .data-page-head{margin-bottom:var(--s2)}
+.summary-page .data-page-head>div{display:grid;grid-template-columns:auto 1fr;column-gap:5mm;align-items:baseline}
+.summary-page .data-page-head span{grid-column:1/-1}
+.summary-page .data-page-head strong{font-size:18pt;margin-top:1.3mm}
+.summary-page .data-page-head em{font-size:8pt;color:#d8deef;margin:0;text-transform:uppercase;letter-spacing:.07em}
+
+.summary-governance{display:grid;grid-template-columns:22mm 1fr;align-items:center;gap:var(--s2);margin-bottom:var(--s1);padding:var(--s1) var(--s2);border:.25mm solid var(--line);border-left:1mm solid var(--blue);border-radius:var(--radius)}
+.summary-governance h2{margin:0;color:var(--blue);font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.summary-governance>div{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3)}
 .summary-governance>div>div{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:2mm;min-width:0}
 .summary-governance span,.summary-governance b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
-.summary-governance b{margin:0;font-size:6.3pt;color:#10104b}
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "risks resources";gap:2.5mm;align-items:stretch}
-.summary-grid>[data-section-title="Chiffres clés"]{grid-area:key}.summary-grid>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}.summary-grid>[data-section-title="Logement"]{grid-area:housing}.summary-grid>[data-section-title="Occupation du sol (MOS 2025)"]{grid-area:land}.summary-grid>[data-section-title="Risques majeurs recensés"]{grid-area:risks}.summary-grid>[data-section-title="Artificialisation, eau et énergie"]{grid-area:resources}
-.summary-grid .result-section{padding:2.5mm 3mm;margin:0;border-radius:2.5mm;break-inside:avoid;min-width:0}
-.summary-grid .result-section h3{font-size:8.5pt;margin-bottom:1.5mm}
-.summary-grid .data-grid>div{padding:.3mm 0;font-size:6.3pt;gap:3mm}
-.summary-grid .viz-key .data-grid{gap:1mm}
-.summary-grid .viz-key .data-grid>div{padding:1.4mm}
-.summary-grid .viz-key .data-grid dd{font-size:8pt}
-.summary-grid .viz-key{grid-template-columns:39mm 1fr;gap:2mm}.summary-grid .commune-map-card{padding:.8mm}.summary-grid .commune-mini-map{height:25mm;min-height:25mm}
-.summary-grid .housing-donut{grid-template-columns:27mm 1fr;gap:3mm;padding:2mm}.summary-grid .housing-donut svg{width:26mm;height:26mm}.summary-grid .housing-radials{display:none}
-.summary-grid .value-meter{height:.7mm}
-.profile-chart{margin-top:3mm;padding-top:2mm;border-top:.2mm solid #cfd3ea}
-.profile-chart h4{margin:0 0 2mm;color:#000091;font-size:6.5pt;text-transform:uppercase;letter-spacing:.05em}
-.profile-chart>div{display:grid;grid-template-columns:repeat(6,1fr);gap:1mm;align-items:end}
-.profile-chart figure{margin:0;text-align:center;min-width:0}
-.profile-chart figure>div{height:20mm;display:flex;align-items:flex-end;justify-content:center;background:#eef0f7;border-radius:1mm;overflow:hidden}
-.profile-chart figure i{display:block;width:70%;min-height:.8mm;background:linear-gradient(#6374d9,#000091);border-radius:1mm 1mm 0 0}
-.profile-chart b{display:block;margin-top:.8mm;font-size:5.5pt;color:#000091}
-.profile-chart figcaption{margin-top:.5mm;font-size:4.7pt;line-height:1.1;color:#666;overflow-wrap:anywhere}
-.summary-grid .risque-pill{font-size:6pt;padding:.8mm 1.5mm;margin:0 .8mm .8mm 0}
-.summary-grid .fiche-subhead{font-size:6pt;margin:1.5mm 0 .8mm}
-.summary-grid .donut-wrap{gap:2mm;margin:0}
-.summary-grid .donut{width:15mm;height:15mm;box-shadow:inset 0 0 0 3.7mm #fff,0 0 0 .2mm #eee}
-.summary-grid .donut-legend{gap:.5mm}
-.summary-grid .donut-legend-row{font-size:5.8pt;gap:1mm}
-.summary-grid .donut-legend-row i{width:1.6mm;height:1.6mm}
-.summary-grid .donut-legend-row b{font-size:5.8pt}
-.summary-grid .compare-bars{gap:.8mm}
-.summary-grid .compare-bar-row{font-size:5.8pt}
-.summary-grid .compare-bar-track{height:1.3mm}
-.summary-grid .age-structure{margin:.5mm 0 1mm}.summary-grid .age-stack{height:4mm}.summary-grid .age-labels{gap:.6mm;margin-top:.7mm}.summary-grid .age-labels>div{grid-template-columns:1.4mm 1fr auto;gap:.6mm;font-size:5pt}.summary-grid .age-labels i{width:1.4mm;height:1.4mm}
-.summary-source{font-size:6pt;color:#666;margin:2.5mm 0 0}
+.summary-governance span{font-size:6pt;color:var(--muted);text-transform:uppercase}
+.summary-governance b{margin:0;font-size:7pt;color:var(--ink)}
 
-/* Système éditorial 2026 : grille, hiérarchie et rythme communs */
-.data-page{--s1:2mm;--s2:4mm;--s3:6mm;--s4:8mm;padding:10mm 13mm}
-.data-body{display:flex;flex-direction:column;gap:var(--s3)}
-.data-body .result-section,.octe-theme{margin:0;padding:var(--s3);border-radius:2mm;background:#fff;box-shadow:none}
-.data-body .viz-section{background:#fff}
-.data-body .result-section h3,.octe-theme h2{font-size:14pt;line-height:1.18;margin:0 0 var(--s2);font-weight:700}
-.data-body .source-note{font-size:7pt;line-height:1.35;margin-top:var(--s2)}
+.summary-columns{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);align-items:stretch;flex:1;min-height:0;overflow:hidden}
+.summary-columns>div{display:flex;min-width:0;flex-direction:column;gap:var(--s2)}
+.summary-columns .result-section,.summary-columns .octe-theme{flex:0 1 auto;min-height:0;overflow:hidden}
 
-/* Première page : carte 16:9, centrée, puis repères dans une vraie grille */
-.data-body .viz-key{grid-template-columns:78mm minmax(0,1fr);grid-template-rows:auto minmax(58mm,auto);gap:var(--s2) var(--s3);align-items:stretch;overflow:visible}
-.commune-map-card{padding:0;background:#e4e6e9;border:.25mm solid #b9bec7;border-radius:2mm}
-.commune-mini-map{height:100%;min-height:0;border:0;border-radius:1.7mm;background:#dedfe2}
-.commune-mini-map-image{display:block;width:100%;height:100%;object-fit:cover}
-.commune-mini-map .leaflet-container{background:#dedfe2}
-.data-body .viz-key .data-grid{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s2);min-height:0}
-.data-body .viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:27mm;padding:var(--s2);border:0;border-left:1mm solid #000091;border-radius:0;background:#f4f5fb}
-.data-body .viz-key .data-grid dt{font-size:8pt;line-height:1.2;color:#52566a}
-.data-body .viz-key .data-grid dd{font-size:11pt;line-height:1.18;margin-top:1.5mm;color:#000091}
+/* Densité maîtrisée : la même grammaire que la fiche complète, réduite */
+.summary-page .result-section,.summary-page .octe-theme{padding:var(--s2) var(--s3)}
+.summary-page .result-section h3{font-size:10pt;margin-bottom:var(--s1)}
+.summary-page .data-grid>div{padding:.5mm 0;font-size:7pt;gap:3mm}
+.summary-page .source-note{display:none}
 
-/* Démographie : trois niveaux de lecture, sans doublons */
-.demography-kpis{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:var(--s2);margin-bottom:var(--s3)}
-.demography-kpis>div{min-height:25mm;padding:var(--s2);display:flex;flex-direction:column;justify-content:space-between;border-top:1.1mm solid #e05a3f;background:#fff7f4}
-.demography-kpis span{font-size:8pt;line-height:1.25;color:#6d514b}
-.demography-kpis b{font-size:15pt;line-height:1.1;color:#9c321f}
-.demography-kpis .is-primary b{font-size:20pt}
-.demography-chart{padding:var(--s2) 0;border-top:.25mm solid #e3d6d2}
-.demography-chart h4{margin:0 0 3mm;font-size:9pt;letter-spacing:.04em;text-transform:uppercase;color:#913421}
-.age-structure{margin:0}.age-stack{height:9mm}.age-labels{margin-top:3mm;gap:4mm}.age-labels>div{font-size:8pt;grid-template-columns:2.3mm 1fr auto;gap:1.5mm}
-.family-chart{display:grid;grid-template-columns:1fr 1fr;gap:3mm 6mm}
-.family-chart h4{grid-column:1/-1}
-.family-bar{display:grid;grid-template-columns:1fr auto;gap:1.2mm 3mm;align-items:end}
-.family-bar span{font-size:7.7pt;color:#4c5558;line-height:1.2}
-.family-bar b{font-size:8pt;color:#0d5c63;white-space:nowrap}
-.family-bar i{grid-column:1/-1;display:block;height:2.4mm;background:#e2eff0;border-radius:2mm;overflow:hidden}
-.family-bar em{display:block;height:100%;border-radius:2mm}
+.summary-page .viz-key{grid-template-columns:1fr;grid-template-rows:auto auto;gap:var(--s1)}
+.summary-page .viz-key .data-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:var(--s1)}
+.summary-page .viz-key .data-grid>div{min-height:0;padding:1.8mm 2.4mm}
+.summary-page .viz-key .data-grid dt{font-size:6.2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-page .viz-key .data-grid dd{font-size:8.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-page .commune-map-card{display:none}
 
-/* Économie : indicateurs majeurs, taux comparables et intensité locale */
-.economy-viz{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"head bars" "context context";gap:var(--s3)}
-.economy-headlines{grid-area:head;display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
-.economy-headlines>div{min-height:42mm;padding:var(--s2);display:flex;flex-direction:column;justify-content:space-between;border-top:1.2mm solid #b25b12;background:#fff7ed}
-.economy-headlines span{font-size:7pt;text-transform:uppercase;letter-spacing:.07em;color:#8d4a12}
-.economy-headlines b{margin:2mm 0;font-size:22pt;line-height:1;color:#7a3b08}
-.economy-headlines small{font-size:8pt;line-height:1.25;color:#66584c}
-.economy-bars{grid-area:bars;display:flex;flex-direction:column;justify-content:center;gap:5mm;padding:var(--s2);background:#fffaf4}
-.economy-bars>div{display:grid;grid-template-columns:1fr auto;gap:1.5mm 4mm;align-items:end}
-.economy-bars span{font-size:8pt;line-height:1.25;color:#66584c}.economy-bars b{font-size:12pt;color:#7a3b08}
-.economy-bars i{grid-column:1/-1;height:3mm;background:#eadfd4;border-radius:2mm;overflow:hidden}.economy-bars em{display:block;height:100%;background:#cf741f;border-radius:2mm}
-.economy-context{grid-area:context;display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
-.economy-context>div{min-height:22mm;padding:var(--s2);justify-content:space-between;border:0;border-left:1mm solid #d59250;background:#fff}
-.economy-context span{font-size:8pt}.economy-context b{font-size:12pt}
+.summary-page .demography-kpis{grid-template-columns:repeat(3,1fr);gap:var(--s1);margin-bottom:var(--s1)}
+.summary-page .demography-kpis>div{padding:1.8mm}
+.summary-page .demography-kpis span{font-size:5.6pt}
+.summary-page .demography-kpis b{font-size:8pt}
+.summary-page .demography-kpis .is-primary b{font-size:10.5pt}
+.summary-page .age-stack{height:4.5mm}
+.summary-page .age-labels{gap:1mm;margin-top:1mm}
+.summary-page .age-labels>div{font-size:6pt}
+.summary-page .family-chart,.summary-page .territory-profile-grid{display:none}
 
-/* Fiches métier enrichies : une lecture, une hiérarchie, puis le détail. */
-.housing-market{margin:0 0 var(--s3);padding:var(--s3);background:#f7f1fb;border-left:1.2mm solid #7b4ab5;border-radius:1.5mm}
-.housing-market h4,.housing-production h4,.housing-heating h4,.economy-detail h4{margin:0 0 var(--s2);font-size:9pt;line-height:1.2;color:#4d2472}
-.housing-market>div{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
-.housing-market article{display:flex;min-height:21mm;flex-direction:column;justify-content:center;padding:var(--s2);background:#fff;border-radius:1.5mm}
-.housing-market article span{font-size:7.5pt;color:#6a6170}.housing-market article b{font-size:15pt;line-height:1.1;color:#55227f}.housing-market article small{margin-top:1.5mm;font-size:7pt;color:#6a6170}
-.housing-market>p{margin:2mm 0 0;font-size:6.5pt;color:#746b78}
-.housing-production,.housing-heating{margin-top:var(--s3);padding:var(--s3);background:#fff;border:0.3mm solid #e3d9eb;border-radius:1.5mm}
-.production-bars{height:35mm;display:flex;align-items:stretch;gap:var(--s2)}.production-bars article{flex:1;display:grid;grid-template-rows:auto 1fr auto;gap:1mm;text-align:center}
-.production-bars article>span{font-size:7pt;color:#6a6170}.production-bars article>i{display:flex;align-items:end;justify-content:center;gap:1.5mm;border-bottom:.3mm solid #cfc5d8}
-.production-bars em,.production-bars strong{display:block;width:5mm;min-height:.8mm}.production-bars em{background:#7b4ab5}.production-bars strong{background:#d49ee8}
-.production-bars small{font-size:6.2pt;line-height:1.25;color:#6a6170}.housing-production>p{display:flex;align-items:center;gap:1.5mm;margin:2mm 0 0;font-size:6.5pt;color:#6a6170}.housing-production>p i,.housing-production>p b{display:inline-block;width:3mm;height:3mm}.housing-production>p i{background:#7b4ab5}.housing-production>p b{background:#d49ee8}
-.housing-heating>div{display:grid;grid-template-columns:42mm 1fr 15mm;align-items:center;gap:2mm;margin:1.5mm 0}.housing-heating span{font-size:7pt}.housing-heating i{height:2.2mm;background:#ece7ef;border-radius:2mm;overflow:hidden}.housing-heating em{display:block;height:100%;background:#9a65bb}.housing-heating b{font-size:7.5pt;text-align:right;color:#55227f}
-.economy-detail{display:grid;grid-template-columns:1.25fr .85fr;gap:var(--s3);margin-top:var(--s3)}
-.sector-viz,.size-viz{padding:var(--s3);background:#fffaf4;border:.3mm solid #f0dfce;border-radius:1.5mm}.economy-detail h4{color:#7a3b08}
-.sector-viz>div{display:grid;grid-template-columns:48mm 1fr 13mm;gap:2mm;align-items:center;margin:1.5mm 0}.sector-viz span,.size-viz p{font-size:6.8pt;line-height:1.2}.sector-viz>div>i{height:2.3mm;background:#eee3d8;border-radius:2mm;overflow:hidden}.sector-viz em{display:block;height:100%;background:#c56b18}.sector-viz b{font-size:7pt;text-align:right;color:#7a3b08}
-.size-band{display:flex;height:12mm;margin-bottom:2mm;overflow:hidden;border-radius:1.5mm}.size-band i{display:block;background:var(--c)}.size-viz p{display:grid;grid-template-columns:3mm 1fr auto;gap:1.5mm;align-items:center;margin:1mm 0}.size-viz p i{width:3mm;height:3mm;background:var(--c)}.size-viz p b{color:#7a3b08}
-.octe-mobility .octe-data-grid{grid-template-columns:repeat(2,1fr);gap:var(--s2)}.octe-mobility .octe-data-item{min-height:25mm;padding:var(--s3);background:#f8f9fd}.octe-mobility dt{font-size:7.5pt;color:#5d6270}.octe-mobility dd{font-size:10.5pt;line-height:1.28;font-weight:650;overflow-wrap:anywhere}
-.octe-planning .octe-status-matrix{grid-template-columns:repeat(3,1fr);gap:var(--s2)}.octe-planning .octe-status-matrix>div{min-height:20mm;padding:var(--s2)}
-#dataPage-2{--s3:3mm}#dataPage-2 .viz-housing{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}#dataPage-2 .viz-housing>h3,#dataPage-2 .viz-housing>.source-note,#dataPage-2 .viz-housing>.housing-market,#dataPage-2 .viz-housing>.housing-radials{grid-column:1/-1}#dataPage-2 .viz-housing>.housing-production,#dataPage-2 .viz-housing>.housing-heating{margin-top:0}#dataPage-2 .viz-housing>.housing-donut,#dataPage-2 .viz-housing>.data-grid{align-self:stretch;min-height:48mm}#dataPage-2 .viz-housing>.housing-donut{grid-column:1;grid-template-columns:34mm minmax(0,1fr);gap:3mm;padding:3mm}#dataPage-2 .housing-donut svg{width:33mm;height:33mm}#dataPage-2 .housing-donut .donut-legend{gap:2mm}#dataPage-2 .housing-donut .donut-legend-row{font-size:7.4pt;line-height:1.18}#dataPage-2 .housing-donut .donut-legend-row span{white-space:normal;overflow:visible;text-overflow:clip}#dataPage-2 .housing-donut .donut-legend-row b{font-size:7.6pt;white-space:nowrap}#dataPage-2 .viz-housing>.data-grid{grid-column:2;display:grid;grid-template-columns:1fr 1fr;gap:2mm;align-content:stretch}#dataPage-2 .viz-housing>.data-grid>div{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:3mm;border:0;border-left:.8mm solid #7b4ab5;background:#fff}#dataPage-2 .viz-housing>.data-grid dt,#dataPage-2 .viz-housing>.data-grid dd{text-align:left}#dataPage-2 .viz-housing>.data-grid dd{margin-top:1mm;font-size:12pt;color:#4d277d}#dataPage-2 .viz-housing>.housing-heating{grid-column:1}#dataPage-2 .viz-housing>.housing-production{grid-column:2}#dataPage-2 .housing-radials{margin-top:0;padding-top:3mm;grid-template-columns:repeat(4,1fr);gap:2mm}#dataPage-2 .housing-radials>div{padding:2.5mm}#dataPage-2 .housing-radials b{font-size:11pt}#dataPage-2 .housing-radials span{font-size:6.8pt}
-#dataPage-6 .viz-mobility{padding:4mm 5mm}#dataPage-6 .mobility-kpis{gap:3mm;margin-bottom:3mm}#dataPage-6 .mobility-kpis>div{padding:3.5mm}#dataPage-6 .service-timeline{margin:0 0 3mm;padding:3mm 4mm}#dataPage-6 .mobility-lines{gap:2mm}#dataPage-6 .mobility-lines>div{grid-template-columns:29mm 1fr;padding:3mm}#dataPage-6 .mobility-lines>div>span{font-size:10pt;line-height:1.15}#dataPage-6 .mobility-lines b{font-size:8.5pt}#dataPage-6 .mobility-lines small{font-size:7pt}
-#dataPage-7 .octe-theme,#dataPage-7 .result-section{margin-bottom:2mm;padding:3mm 4mm}#dataPage-7 .octe-theme-head{margin-bottom:2mm}#dataPage-7 .octe-data-item{min-height:0;padding:2mm 2.5mm}#dataPage-7 .octe-data-item dt{font-size:7.5pt}#dataPage-7 .octe-data-item dd{font-size:9pt}#dataPage-7 .viz-resources .data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}#dataPage-7 .viz-resources .data-grid>div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:27mm;padding:3mm;border:0;border-bottom:1mm solid #16818a;background:#fff}#dataPage-7 .viz-resources .data-grid dt,#dataPage-7 .viz-resources .data-grid dd{text-align:left}#dataPage-7 .viz-resources .data-grid dd{margin-top:1.5mm;color:#087079;font-size:10pt}
-#dataPage-2 .housing-radials{margin-top:0;padding-top:0;border-top:0;grid-template-columns:repeat(4,1fr);gap:2mm}#dataPage-2 .housing-radials>div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1mm;min-height:15mm;padding:2mm;border-left:.8mm solid #7b4ab5;border-radius:0}#dataPage-2 .housing-radials b{font-size:10pt}#dataPage-2 .housing-radials span{font-size:6.4pt}#dataPage-2 .housing-radials i{display:none}#dataPage-2 .production-bars{height:25mm}#dataPage-2 .housing-market{padding:3mm}#dataPage-2 .housing-market .market-kpis{gap:2mm}#dataPage-2 .housing-market .market-kpis article{padding:2.5mm}
-#dataPage-2 .viz-housing{grid-auto-flow:row dense}#dataPage-2 .viz-housing>.data-grid{margin:0}
-#dataPage-0 .viz-key{grid-template-columns:92mm minmax(0,1fr);gap:5mm 6mm;padding:6mm}#dataPage-0 .commune-mini-map{min-height:72mm}#dataPage-0 .viz-key .data-grid{gap:3mm}#dataPage-0 .viz-key .data-grid>div{padding:5mm}#dataPage-0 .viz-key .data-grid dt{font-size:9pt}#dataPage-0 .viz-key .data-grid dd{font-size:12pt}#dataPage-0 .viz-governance{padding:6mm}#dataPage-0 .viz-governance .data-grid{gap:3mm 5mm}#dataPage-0 .viz-governance .data-grid>div{min-height:24mm;padding:4mm}#dataPage-0 .viz-governance .data-grid dt{font-size:9pt}#dataPage-0 .viz-governance .data-grid dd{font-size:10pt;line-height:1.3}
-#dataPage-2 .viz-housing{grid-template-columns:1.25fr .75fr;align-items:stretch;gap:4mm}#dataPage-2 .viz-housing>.housing-donut,#dataPage-2 .viz-housing>.data-grid{min-height:40mm;height:40mm}#dataPage-2 .viz-housing>.housing-donut{grid-template-columns:32mm minmax(0,1fr);padding:2.5mm 3mm}#dataPage-2 .housing-donut svg{width:30mm;height:30mm}#dataPage-2 .viz-housing>.data-grid{grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:2mm}#dataPage-2 .viz-housing>.data-grid>div{min-height:0;padding:3mm;border:0;border-radius:2mm;background:#f7f2fb}#dataPage-2 .viz-housing>.data-grid dt{font-size:7.5pt;color:#6b6172}#dataPage-2 .viz-housing>.data-grid dd{font-size:11pt}
-#dataPage-4 .viz-economy{padding:4mm}#dataPage-4 .economy-detail{margin-top:3mm}
-#dataPage-7 .patrimony-viz{min-height:58mm;margin:3mm 0 4mm;gap:3mm}
+.summary-page .land-overview{grid-template-columns:26mm 1fr;gap:var(--s2)}
+.summary-page .land-total{height:26mm}
+.summary-page .land-legend small{display:none}
+.summary-page .land-legend span{font-size:6.6pt}
+.summary-page .land-legend b{font-size:6.8pt}
 
-/* Synthèse : densité maîtrisée, carte lisible et titres toujours dominants */
-.summary-page{padding:8mm 10mm}
-.summary-page .data-page-head{margin-bottom:3mm}
-.summary-grid{gap:3mm;grid-template-columns:1fr 1fr}
-.summary-grid .result-section{padding:3mm 3.5mm}
-.summary-grid .result-section h3{font-size:9.5pt;line-height:1.2;margin-bottom:2mm}
-.summary-grid .viz-key{grid-template-columns:1fr;grid-template-rows:auto 29mm auto;gap:2mm;align-content:start;overflow:visible}
-.summary-grid .viz-key>h3{grid-column:1;grid-row:1}.summary-grid .viz-key>.commune-map-card{grid-column:1;grid-row:2}.summary-grid .viz-key>.data-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;gap:1.2mm}
-.summary-grid .commune-mini-map{height:29mm;min-height:29mm}
-.summary-grid .viz-key .data-grid>div{min-height:0;padding:1.4mm;border-left:.6mm solid #000091}.summary-grid .viz-key .data-grid dt{font-size:4.8pt}.summary-grid .viz-key .data-grid dd{font-size:6.8pt;line-height:1.15;overflow-wrap:normal;white-space:normal}
-.summary-grid .demography-kpis{grid-template-columns:repeat(3,1fr);gap:1.5mm;margin-bottom:2mm}
-.summary-grid .demography-kpis>div{min-height:15mm;padding:1.8mm}
-.summary-grid .demography-kpis span{font-size:5.3pt}.summary-grid .demography-kpis b{font-size:7.3pt}.summary-grid .demography-kpis .is-primary b{font-size:9pt}
-.summary-grid .demography-chart{padding:1.5mm 0}.summary-grid .demography-chart h4{font-size:5.8pt;margin-bottom:1mm}
-.summary-grid .age-labels{margin-top:1mm}.summary-grid .family-chart{display:none}
-.summary-grid .land-overview{grid-template-columns:29mm 1fr;gap:3mm}.summary-grid .land-legend{grid-template-columns:1fr;gap:1.2mm;margin-top:1.8mm}.summary-grid .land-legend small{display:none}.summary-grid .land-legend span{font-size:5.6pt}.summary-grid .land-legend b{font-size:5.8pt}
-.summary-page#dataPage-0 .viz-key{grid-template-columns:1fr!important;grid-template-rows:auto auto!important;gap:2mm!important;padding:3mm 3.5mm!important}.summary-page#dataPage-0 .viz-key .data-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-rows:1fr!important;gap:1.2mm!important}.summary-page#dataPage-0 .viz-key .data-grid>div{min-height:0!important;padding:1.7mm!important}.summary-page#dataPage-0 .viz-key .data-grid dt{font-size:5.4pt!important}.summary-page#dataPage-0 .viz-key .data-grid dd{font-size:7.2pt!important;line-height:1.15!important;overflow-wrap:anywhere}
-.territory-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3mm;margin-top:3mm}.territory-profile{padding:3mm;border:.2mm solid #dfe2eb;border-radius:2mm;background:#fafbff}.territory-profile h4{margin:0 0 2mm;color:#16166f;font-size:8pt}.territory-profile>div{display:grid;grid-template-columns:minmax(25mm,1fr) 1fr auto;align-items:center;gap:2mm;margin:1.5mm 0;font-size:6.8pt}.territory-profile i{height:1.5mm;border-radius:2mm;background:#e4e6ee;overflow:hidden}.territory-profile em{display:block;height:100%;border-radius:2mm;background:#5266ae}.territory-profile b{font-size:6.8pt;color:#16166f;font-weight:600}.commute-profile em{background:#c76524}.socio-profile em{background:#0d7a70}.summary-page .territory-profile-grid{grid-template-columns:1fr;gap:1.5mm;margin-top:1.5mm}.summary-page .territory-profile{padding:1.8mm}.summary-page .territory-profile h4{font-size:6.5pt;margin-bottom:1mm}.summary-page .territory-profile>div{grid-template-columns:26mm 1fr auto;margin:.8mm 0;font-size:5.3pt}.summary-page .territory-profile b{font-size:5.3pt}
-.data-page:not(.summary-page) .viz-demography .family-chart{display:none}.data-page:not(.summary-page) .viz-demography .territory-profile-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm;margin-top:2mm}.data-page:not(.summary-page) .viz-demography .territory-profile{padding:2mm}.data-page:not(.summary-page) .viz-demography .territory-profile h4{margin-bottom:1.2mm;font-size:6.8pt}.data-page:not(.summary-page) .viz-demography .territory-profile>div{grid-template-columns:minmax(20mm,1fr) .7fr auto;gap:1.2mm;margin:.8mm 0;font-size:5.4pt}.data-page:not(.summary-page) .viz-demography .territory-profile b{font-size:5.5pt}.data-page:not(.summary-page) .viz-demography .demography-kpis>div{min-height:18mm;padding:1.8mm}.data-page:not(.summary-page) .viz-demography .demography-kpis span{font-size:6.2pt}.data-page:not(.summary-page) .viz-demography .demography-kpis b{font-size:10pt}.data-page:not(.summary-page) .viz-demography .demography-kpis .is-primary b{font-size:13pt}
-.summary-grid .viz-housing{display:block!important}.summary-grid .viz-housing>.housing-production,.summary-grid .viz-housing>.housing-heating,.summary-grid .viz-housing>.data-grid,.summary-grid .viz-housing>.housing-radials,.summary-grid .viz-housing>.source-note{display:none!important}.summary-grid .housing-market{margin:0 0 2mm;padding:2mm}.summary-grid .housing-market h4{margin-bottom:1.5mm;font-size:7pt}.summary-grid .housing-market>div{gap:1.5mm}.summary-grid .housing-market article{min-height:17mm;padding:1.5mm}.summary-grid .housing-market article span{font-size:5.7pt}.summary-grid .housing-market article b{font-size:9.5pt}.summary-grid .housing-market article small{margin-top:.8mm;font-size:5.2pt}.summary-grid .housing-market>p{margin-top:1.2mm;font-size:5.2pt}.summary-grid .housing-donut{min-height:26mm;padding:1.5mm 2mm;grid-template-columns:24mm 1fr}.summary-grid .housing-donut svg{width:23mm;height:23mm}.summary-grid .housing-donut .donut-legend-row{font-size:5.5pt}.summary-grid .housing-donut .donut-legend-row b{font-size:5.7pt}
+.summary-page .housing-market article{min-height:17mm;padding:1.8mm}
+.summary-page .housing-market article span{font-size:6pt}
+.summary-page .housing-market article b{font-size:10.5pt}
+.summary-page .housing-market article small{font-size:5.6pt}
+.summary-page .housing-donut{grid-template-columns:24mm 1fr;padding:1.8mm}
+.summary-page .housing-donut svg{width:23mm;height:23mm}
+.summary-page .housing-donut .donut-legend-row{font-size:6.2pt}
+.summary-page .housing-production,.summary-page .housing-heating,.summary-page .housing-radials,.summary-page .economy-detail{display:none}
 
-.summary-grid .viz-economy .economy-viz{grid-template-columns:1fr 1fr;gap:1.5mm;grid-template-areas:"head bars" "context context"}.summary-grid .viz-economy .economy-headlines{gap:1.2mm}.summary-grid .viz-economy .economy-headlines>div{min-height:21mm;padding:1.6mm}.summary-grid .viz-economy .economy-headlines span{font-size:5pt}.summary-grid .viz-economy .economy-headlines b{margin:.8mm 0;font-size:11pt}.summary-grid .viz-economy .economy-headlines small{font-size:5.2pt}.summary-grid .viz-economy .economy-bars{gap:1.5mm;padding:1.5mm}.summary-grid .viz-economy .economy-bars span{font-size:5.2pt}.summary-grid .viz-economy .economy-bars b{font-size:7pt}.summary-grid .viz-economy .economy-bars i{height:1.5mm}.summary-grid .viz-economy .economy-context{gap:1.2mm}.summary-grid .viz-economy .economy-context>div{min-height:11mm;padding:1.4mm}.summary-grid .viz-economy .economy-context span{font-size:5pt}.summary-grid .viz-economy .economy-context b{font-size:6.8pt}
-.summary-columns{display:grid!important;grid-template-columns:1fr 1fr!important;gap:3mm!important;align-items:start}.summary-columns>div{display:flex;min-width:0;flex-direction:column;gap:3mm}.summary-columns .viz-section{margin:0!important}.territorial-reading{margin-top:2mm;padding:2.2mm 3mm;border:.25mm solid #d9dce7;border-radius:2mm;background:#fafbff}.territorial-reading h2{margin:0 0 1.5mm;color:#17175f;font-size:7.5pt}.territorial-reading>div{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.territorial-reading article{padding-left:2mm;border-left:.8mm solid #18753c}.territorial-reading article+article{border-left-color:#c76524}.territorial-reading h3{margin:0 0 .8mm;font-size:6.2pt;color:#333}.territorial-reading p{margin:.5mm 0;font-size:5.4pt;line-height:1.25;color:#444}
+.summary-page .economy-headlines>div{min-height:22mm;padding:1.8mm}
+.summary-page .economy-headlines b{font-size:12pt;margin:1mm 0}
+.summary-page .economy-headlines span{font-size:5.6pt}
+.summary-page .economy-headlines small{font-size:5.8pt}
+.summary-page .economy-context>div{min-height:12mm;padding:1.6mm}
+.summary-page .economy-context span{font-size:5.6pt}
+.summary-page .economy-context b{font-size:7.5pt}
 
-/* Pas de règles par numéro de page : chaque thème garde le même rythme */
-#dataPage-1 .result-section,#dataPage-2 .result-section,#dataPage-3 .octe-theme,#dataPage-3 .result-section,#dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-8 .result-section,#dataPage-9 .octe-theme,#dataPage-9 .result-section{margin-bottom:0}
-#dataPage-1 .viz-demography,#dataPage-2 .viz-housing,#dataPage-3 .octe-theme,#dataPage-3 .viz-land,#dataPage-4 .viz-economy,#dataPage-8 .octe-theme,#dataPage-4 .octe-theme,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-9 .octe-theme,#dataPage-9 .result-section{padding:var(--s3)}
+.territorial-reading{margin-top:var(--s1);padding:var(--s2) var(--s3);border:.25mm solid var(--line);border-radius:var(--radius);background:var(--paper)}
+.territorial-reading h2{margin:0 0 var(--s1);color:var(--blue);font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em}
+.territorial-reading>div{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.territorial-reading article{padding-left:var(--s2);border-left:1mm solid var(--good)}
+.territorial-reading article+article{border-left-color:var(--warn)}
+.territorial-reading h3{margin:0 0 1mm;font-size:8pt;color:var(--ink)}
+.territorial-reading p{margin:.6mm 0;font-size:7.5pt;line-height:1.3;color:var(--muted)}
 
+/* =====================================================================
+   IMPRESSION
+   ===================================================================== */
 @media print{
   @page{size:A3 landscape;margin:0}
   html,body{background:#fff}
