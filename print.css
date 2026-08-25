@@ -96,8 +96,11 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
    coupé) ; s'il est seul sur la page, il s'étire pour l'occuper pleinement. */
 /* grow (1) pour occuper le vide s'il y en a, shrink (0) jamais : un contenu
    dense garde sa taille naturelle plutôt que d'être comprimé ou coupé. */
-.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-.data-body>*:only-child{flex:1}
+/* Un rapport imprimé normal : chaque bloc garde sa hauteur naturelle et se
+   place en haut de la page. Une page à contenu léger se termine simplement
+   plus tôt — c'est normal et ne doit pas être maquillé en gonflant la police
+   ou en centrant le contenu dans un vide. */
+.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:0 0 auto;display:flex;flex-direction:column;overflow:hidden}
 .data-body{justify-content:flex-start}
 
 .data-foot{margin-top:var(--s2);padding-top:var(--s1);border-top:.2mm solid var(--line);font-size:7pt;color:var(--muted);flex:none;display:flex;justify-content:space-between}
@@ -339,11 +342,6 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .octe-data-item p{margin:1.2mm 0 0;font-size:7.5pt;line-height:1.3;color:var(--muted)}
 .octe-data-item>i{display:block;height:1.3mm;margin-top:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
 .octe-data-item>i span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
-
-/* Une thématique peu fournie (1 à 3 indicateurs) qui partage sa page ne
-   s'étire pas en absorbant tout le vide : elle reste compacte, à sa taille
-   naturelle, et laisse le voisin plus riche occuper l'espace disponible. */
-.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))){flex-grow:0}
 .octe-status{display:inline-block;padding:.8mm 2mm;border-radius:4mm;background:var(--good-soft);color:var(--good)!important;font-size:9pt}
 
 .octe-theme-focus .octe-data-grid{grid-template-columns:1fr}
