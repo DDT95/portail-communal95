@@ -142,7 +142,7 @@
     const title = section.querySelector('h3')?.textContent || '';
     const themes = {
       'Chiffres clés': ['key', '◆'], 'Élus et gouvernance': ['governance', '◎'], 'Sécurité': ['security', '◈'],
-      'Démographie, revenus et emploi': ['demography', '●'], 'Logement': ['housing', '⌂'],
+      'Démographie, revenus et emploi': ['demography', '●'], 'Population et dynamiques sociales': ['demography', '●'], 'Logement': ['housing', '⌂'],
       'Économie locale': ['economy', '◉'],
       'Offre de mobilité': ['mobility', '↔'],
       'Occupation du sol (MOS 2025)': ['land', '◒'], 'Risques majeurs recensés': ['risks', '△'],
@@ -174,7 +174,7 @@
       row.style.setProperty('--row-index', index);
       const value = row.querySelector('dd')?.textContent || '';
       const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
-      if (match && !row.querySelector('.value-meter') && !['Démographie, revenus et emploi', 'Économie locale'].includes(title)) {
+      if (match && !row.querySelector('.value-meter') && !['Démographie, revenus et emploi', 'Population et dynamiques sociales', 'Économie locale'].includes(title)) {
         const pct = Math.max(0, Math.min(100, Number(match[1].replace(',', '.'))));
         row.insertAdjacentHTML('beforeend', `<i class="value-meter" aria-hidden="true"><span style="width:${pct}%"></span></i>`);
       }
@@ -195,7 +195,7 @@
         section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="land-overview">${surface ? `<div class="land-total"><b>${escapeHtml(surface.value)}</b><span>surface communale</span></div>` : ''}<div class="land-composition"><div class="land-band">${parts.map((row, i) => `<i style="width:${row.pct}%;background:${colors[i % colors.length]}"></i>`).join('')}</div><div class="land-legend">${parts.map((row, i) => `<div><i style="background:${colors[i % colors.length]}"></i><span>${escapeHtml(row.label)}</span><b>${row.pct.toFixed(1)} %</b><small>${escapeHtml(row.value.replace(/\s*[·-]\s*\d+(?:[.,]\d+)?\s*%/, ''))}</small></div>`).join('')}</div></div></div>`);
       }
     }
-    if (title === 'Démographie, revenus et emploi') {
+    if (title === 'Démographie, revenus et emploi' || title === 'Population et dynamiques sociales') {
       const metricRows = [...section.querySelectorAll('.data-grid>div')].map(row => ({
         label: row.querySelector('dt')?.textContent.trim() || '',
         value: row.querySelector('dd')?.textContent.trim() || ''
@@ -314,7 +314,29 @@
       const observer = new ResizeObserver(recenter);
       observer.observe(host);
       let settled = false;
-      const done = () => { if (!settled) { settled = true; setTimeout(() => { recenter(); observer.disconnect(); resolve(); }, 350); } };
+      const freezeMap = async () => {
+        recenter();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        recenter();
+        await new Promise(r => setTimeout(r, 120));
+        try {
+          // Leaflet déplace séparément les tuiles et le calque SVG. Lors de la
+          // capture de la page entière, html2canvas pouvait réinterpréter ces
+          // transformations et décaler le contour communal. On fige donc la
+          // carte cadrée en une seule image avant de composer le PDF.
+          const canvas = await html2canvas(host, { scale: 2, useCORS: true, backgroundColor: '#dedfe2', logging: false });
+          const image = document.createElement('img');
+          image.src = canvas.toDataURL('image/jpeg', 0.94);
+          image.alt = `Carte centrée de ${state.nom}`;
+          image.className = 'commune-mini-map-image';
+          await image.decode().catch(() => {});
+          map.remove();
+          host.replaceChildren(image);
+        } catch (error) {
+          console.warn('La carte n’a pas pu être figée avant export.', error);
+        }
+      };
+      const done = () => { if (!settled) { settled = true; setTimeout(async () => { observer.disconnect(); await freezeMap(); resolve(); }, 350); } };
       tiles.once('load', done);
       setTimeout(done, 1600);
     })));
@@ -322,16 +344,16 @@
 
   function buildSynthese() {
     const sections = portalSections();
-    const wanted = ['Chiffres clés', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Risques majeurs recensés', 'Artificialisation, eau et énergie'];
+    const wanted = ['Chiffres clés', 'Population et dynamiques sociales', 'Logement', 'Occupation du sol (MOS 2025)', 'Économie locale'];
     const findPercentage = (sectionTitle, label) => {
       const section = sections.find(s => s.dataset.sectionTitle === sectionTitle);
-      const row = section ? [...section.querySelectorAll('.data-grid>div,.demography-kpis>div')].find(r => (r.querySelector('dt,span')?.textContent || '').toLocaleLowerCase('fr').includes(label.toLocaleLowerCase('fr'))) : null;
+      const row = section ? [...section.querySelectorAll('.data-grid>div,.demography-kpis>div,.economy-bars>div,.economy-context>div')].find(r => (r.querySelector('dt,span')?.textContent || '').toLocaleLowerCase('fr').includes(label.toLocaleLowerCase('fr'))) : null;
       const match = row?.querySelector('dd,b')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
       return match ? Number(match[1].replace(',', '.')) : null;
     };
     const profileValues = [
-      ['Pauvreté', findPercentage('Démographie, revenus et emploi', 'pauvreté')],
-      ['Chômage', findPercentage('Démographie, revenus et emploi', 'chômage')],
+      ['Pauvreté', findPercentage('Population et dynamiques sociales', 'pauvreté')],
+      ['Chômage', findPercentage('Population et dynamiques sociales', 'chômage')],
       ['Logement social', findPercentage('Logement', 'logement social')],
       ['Vacance', findPercentage('Logement', 'vacants')],
       ['Maisons', findPercentage('Logement', 'Maisons')],
@@ -340,17 +362,32 @@
     const selected = sections.filter(s => wanted.includes(s.dataset.sectionTitle || '')).map(s => {
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
-      if (s.dataset.sectionTitle === 'Chiffres clés') clone.insertAdjacentHTML('afterbegin', miniMapHtml());
-      if (s.dataset.sectionTitle === 'Démographie, revenus et emploi') {
-        [...clone.querySelectorAll('.data-grid>div')].slice(3).forEach(row => row.remove());
+      if (s.dataset.sectionTitle === 'Population et dynamiques sociales') {
+        [...clone.querySelectorAll('.data-grid>div')].slice(6).forEach(row => row.remove());
         clone.querySelector('.family-chart')?.remove();
       }
       if (s.dataset.sectionTitle === 'Logement') clone.querySelector('.housing-radials')?.remove();
+      if (s.dataset.sectionTitle === 'Économie locale') {
+        clone.querySelector('.economy-detail')?.remove();
+        [...clone.querySelectorAll('.economy-context>div')].slice(3).forEach(row => row.remove());
+      }
       return clone.outerHTML;
     });
     const governance = sections.find(s => s.dataset.sectionTitle === 'Élus et gouvernance');
-    const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].slice(0, 3).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
-    const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid">${selected.join('')}</div>`;
+    const governanceRows = governance ? [...governance.querySelectorAll('.data-grid>div')].filter(row => /^(Maire|Canton)$/i.test(row.querySelector('dt')?.textContent?.trim() || '')).map(row => `<div><span>${escapeHtml(row.querySelector('dt')?.textContent || '')}</span><b>${escapeHtml(row.querySelector('dd')?.textContent || '')}</b></div>`).join('') : '';
+    const unemployment = findPercentage('Économie locale', 'chômage');
+    const poverty = findPercentage('Population et dynamiques sociales', 'pauvreté');
+    const populationSection = sections.find(s => s.dataset.sectionTitle === 'Population et dynamiques sociales');
+    const profilePercent = (selector, pattern) => [...(populationSection?.querySelectorAll(`${selector}>div`) || [])].filter(row => pattern.test(row.querySelector('span')?.textContent || '')).reduce((sum, row) => sum + Number((row.querySelector('b')?.textContent || '').match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(',', '.') || 0), 0);
+    const higherEducation = profilePercent('.education-profile', /Bac\+2|Licence|Bac\+5/i);
+    const transit = profilePercent('.commute-profile', /transport.*commun/i);
+    const strengths = [higherEducation > 0 ? `${higherEducation.toFixed(1)} % de diplômés du supérieur` : null, transit > 0 ? `${transit.toFixed(1)} % des actifs utilisent les transports collectifs` : null, unemployment != null && unemployment < 8 ? `Chômage contenu : ${unemployment.toFixed(1)} %` : null].filter(Boolean).slice(0, 2);
+    const watch = [unemployment != null ? `Chômage : ${unemployment.toFixed(1)} % des 15-64 ans` : null, poverty != null ? `Pauvreté : ${poverty.toFixed(1)} % de la population` : null, higherEducation && higherEducation < 20 ? `Diplômés du supérieur : ${higherEducation.toFixed(1)} %` : null, transit != null && transit < 10 ? `Usage des transports collectifs : ${transit.toFixed(1)} %` : null].filter(Boolean).slice(0, 2);
+    const reading = `<section class="territorial-reading"><h2>Lecture territoriale</h2><div><article><h3>Atouts</h3>${strengths.map(item => `<p>${escapeHtml(item)}</p>`).join('') || '<p>Indicateurs à consolider pour qualifier les atouts.</p>'}</article><article><h3>Points de vigilance</h3>${watch.map(item => `<p>${escapeHtml(item)}</p>`).join('') || '<p>Aucun écart majeur parmi les indicateurs disponibles.</p>'}</article></div></section>`;
+    const selectedMap = new Map(selected.map(html => { const wrap = document.createElement('div'); wrap.innerHTML = html; return [wrap.firstElementChild?.dataset.sectionTitle || '', html]; }));
+    const left = ['Chiffres clés', 'Logement', 'Économie locale'].map(title => selectedMap.get(title) || '').join('');
+    const right = ['Population et dynamiques sociales', 'Occupation du sol (MOS 2025)'].map(title => selectedMap.get(title) || '').join('');
+    const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid summary-columns"><div>${left}</div><div>${right}</div></div>${reading}`;
     document.getElementById('dataPages').innerHTML = pageHtml(state.nom, content, 0, 1, 'summary-page');
   }
 
@@ -529,7 +566,7 @@
         unavailable = [];
       }
       if (theme.title === 'Transports / déplacements et Aménagement') {
-        available = available.map(entry => {
+        available = available.filter(entry => !/[ÃÂ]/.test(entry.value)).map(entry => {
           if (/Taux de motorisation/i.test(entry.label)) return { ...entry, label: 'Motorisation des ménages', value: `${entry.value} véhicule par ménage` };
           if (/Réseau routier/i.test(entry.label)) return { ...entry, label: 'Voirie et projets routiers', value: entry.value.replace(/,s*/g, ' · ').replace(/B,Ré/g, 'B · Ré') };
           if (/Réseau de transport en commun/i.test(entry.label)) return { ...entry, label: /LIGNE|RER|TRANSILIEN/i.test(entry.value) ? 'Desserte ferroviaire' : 'Réseau collectif et projets', value: entry.value.replace(/,s*/g, ' · ') };
@@ -563,7 +600,7 @@
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
     const integratedGroups = [
       ['Repères territoriaux et gouvernance', [], ['Chiffres clés', 'Élus et gouvernance']],
-      ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
+      ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Population et dynamiques sociales']],
       ['Habitat et logement', [], ['Logement']],
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
       ['Économie et emploi', ['Développement économique'], ['Économie locale']],

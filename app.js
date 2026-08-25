@@ -564,6 +564,8 @@ function renderFicheDrawer(open) {
   const dvf = state.dvf;
   const transport = t.emploi_mobilites?.transport || [];
   const familles = t.habitants?.structure_familles?.repartition || [];
+  const diplomes = t.habitants?.diplomes?.repartition || [];
+  const categoriesSocio = t.habitants?.categorie_socioprofessionnelle?.repartition || [];
   const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
 
   const demoRows = [
@@ -592,6 +594,12 @@ function renderFicheDrawer(open) {
   const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
   const familySegments = familles.filter(f => f.pct > 0).map((f, i) => ({ label: f.label, pct: f.pct, count: f.value, color: ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'][i] || '#0d5c63' }));
   const familyDonut = familySegments.length ? donutChart(familySegments) : '';
+  const diplomeTop = diplomes.filter(item => item.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 5);
+  const diplomaHtml = diplomeTop.length ? `<div class="territory-profile education-profile"><h4>Niveau de diplôme des 15 ans ou plus</h4>${diplomeTop.map(item => `<div><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>` : '';
+  const transportTop = [...transport].filter(item => item.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 4);
+  const commuteHtml = transportTop.length ? `<div class="territory-profile commute-profile"><h4>Déplacements domicile–travail</h4>${transportTop.map(item => `<div><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>` : '';
+  const socioTop = categoriesSocio.filter(item => item.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 4);
+  const socioHtml = socioTop.length ? `<div class="territory-profile socio-profile"><h4>Catégories socioprofessionnelles</h4>${socioTop.map(item => `<div><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>` : '';
 
   const occSegs = [
     occ.proprietaires?.value != null ? { label: 'Propriétaires', pct: pctOf(occ.proprietaires.value, rp), count: occ.proprietaires.value, color: '#18753c' } : null,
@@ -657,7 +665,7 @@ function renderFicheDrawer(open) {
     <section class="result-section"><h3>Chiffres clés</h3><dl class="data-grid">${kpiRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>
     ${elusRows.length ? `<section class="result-section"><h3>Élus et gouvernance</h3><dl class="data-grid">${elusRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>` : ''}
     ${secRows.length ? `<section class="result-section"><h3>Sécurité</h3><dl class="data-grid">${secRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${l === 'Téléphone' ? `<a href="tel:${escapeHtml(v.replace(/\s/g, ''))}">${escapeHtml(v)}</a>` : escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">SSMSI · OpenStreetMap — voir <a href="https://ddt95.github.io/val-doise-securite/" target="_blank" rel="noreferrer">Sécurité et prévention</a> pour la carte complète.</p></section>` : ''}
-    ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Structure par âge</p>${ageDonut}` : ''}${familyDonut ? `<p class="fiche-subhead">Structure des ménages</p>${familyDonut}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
+    ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Population et dynamiques sociales</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Structure par âge</p>${ageDonut}` : ''}${familyDonut ? `<p class="fiche-subhead">Structure des ménages</p>${familyDonut}` : ''}<div class="territory-profile-grid">${diplomaHtml}${socioHtml}${commuteHtml}</div><p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
     ${economyRows.length ? `<section class="result-section"><h3>Économie locale</h3><dl class="data-grid">${[...economyRows, ...economyExtra].map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>${economyDetailHtml}<p class="source-note">Insee · RP2023, Filosofi, REE 2024–2025.</p></section>` : ''}
     ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${priceMarketHtml}${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${constructionHtml}${heatingHtml}<p class="source-note">Insee · RPLS · Sitadel3 · ADEME · DGFiP/DVF — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
     ${mosRows.length ? `<section class="result-section"><h3>Occupation du sol (MOS 2025)</h3>${mosSegs.length ? donutChart(mosSegs) : ''}<dl class="data-grid">${mosRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Institut Paris Region — millésime 2025 · estimation sur l’emprise communale.</p></section>` : ''}
