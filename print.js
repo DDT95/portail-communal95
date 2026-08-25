@@ -397,7 +397,7 @@
       unemployment != null && unemployment < 8 ? { metric: `${unemployment.toFixed(1)} %`, text: 'de chômage : situation de l’emploi relativement favorable.' } : null,
       poverty != null && poverty < 12 ? { metric: `${poverty.toFixed(1)} %`, text: 'de pauvreté : fragilité monétaire contenue.' } : null,
       vacancy != null && vacancy < 6 ? { metric: `${vacancy.toFixed(1)} %`, text: 'de logements vacants : parc résidentiel fortement occupé.' } : null
-    ].filter(Boolean).slice(0, 3);
+    ].filter(Boolean).slice(0, 2);
     const watch = [
       unemployment != null && unemployment >= 8 ? { metric: `${unemployment.toFixed(1)} %`, text: 'de chômage des 15-64 ans : accès à l’emploi à surveiller.' } : null,
       poverty != null && poverty >= 12 ? { metric: `${poverty.toFixed(1)} %`, text: 'de pauvreté : enjeu de cohésion sociale et de pouvoir d’achat.' } : null,
@@ -406,12 +406,17 @@
       seniors > 0 ? { metric: `${seniors.toFixed(1)} %`, text: 'de 65 ans ou plus : adaptation progressive des services et des mobilités.' } : null,
       higherEducation > 0 && higherEducation < 25 ? { metric: `${higherEducation.toFixed(1)} %`, text: 'de diplômés du supérieur : enjeu de qualification et d’attractivité.' } : null,
       transit > 0 && transit < 15 ? { metric: `${transit.toFixed(1)} %`, text: 'des actifs utilisent les transports collectifs : offre ou usage à renforcer.' } : null
-    ].filter(Boolean).slice(0, 3);
+    ].filter(Boolean).slice(0, 2);
     const reading = `<section class="territorial-reading"><header><h2>Lecture territoriale</h2><p>Repères issus des indicateurs disponibles pour situer les principaux leviers et enjeux communaux.</p></header><div><article><h3>Forces et leviers</h3>${strengths.map(formatInsight).join('') || '<p><span>Indicateurs à consolider pour qualifier les leviers territoriaux.</span></p>'}</article><article><h3>Vigilances et enjeux</h3>${watch.map(formatInsight).join('') || '<p><span>Aucun écart majeur parmi les indicateurs disponibles.</span></p>'}</article></div></section>`;
     const selectedMap = new Map(selected.map(html => { const wrap = document.createElement('div'); wrap.innerHTML = html; return [wrap.firstElementChild?.dataset.sectionTitle || '', html]; }));
-    const left = ['Chiffres clés', 'Logement', 'Économie locale'].map(title => selectedMap.get(title) || '').join('');
-    const right = `${selectedMap.get('Population et dynamiques sociales') || selectedMap.get('Démographie, revenus et emploi') || ''}${selectedMap.get('Occupation du sol (MOS 2025)') || ''}`;
-    const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid summary-columns"><div>${left}</div><div>${right}</div></div>${reading}`;
+    const dashboard = [
+      selectedMap.get('Chiffres clés') || '',
+      selectedMap.get('Population et dynamiques sociales') || selectedMap.get('Démographie, revenus et emploi') || '',
+      selectedMap.get('Logement') || '',
+      selectedMap.get('Occupation du sol (MOS 2025)') || '',
+      selectedMap.get('Économie locale') || ''
+    ].join('');
+    const content = `${governanceRows ? `<section class="summary-governance"><h2>Gouvernance</h2><div>${governanceRows}</div></section>` : ''}<div class="summary-grid summary-dashboard">${dashboard}</div>${reading}`;
     document.getElementById('dataPages').innerHTML = pageHtml(state.nom, content, 0, 1, 'summary-page');
   }
 

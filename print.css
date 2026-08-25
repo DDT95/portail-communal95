@@ -388,6 +388,19 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-columns{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);align-items:stretch;flex:1;min-height:0;overflow:hidden}
 .summary-columns>div{display:flex;min-width:0;flex-direction:column;gap:var(--s2)}
 .summary-columns .result-section,.summary-columns .octe-theme{flex:0 1 auto;min-height:0;overflow:hidden}
+.summary-dashboard{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "economy economy";gap:var(--s2);align-items:stretch;min-height:0;overflow:hidden}
+.summary-dashboard>[data-section-title="Chiffres clés"]{grid-area:key}
+.summary-dashboard>[data-section-title="Population et dynamiques sociales"],.summary-dashboard>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}
+.summary-dashboard>[data-section-title="Logement"]{grid-area:housing}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"]{grid-area:land}
+.summary-dashboard>[data-section-title="Économie locale"]{grid-area:economy}
+.summary-dashboard>.result-section{min-width:0;min-height:0;overflow:hidden;margin:0}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"]{display:flex;flex-direction:column}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"] .land-overview{flex:1;align-items:center;align-content:center}
+.summary-dashboard>[data-section-title="Logement"]>.data-grid{display:none}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-viz{grid-template-columns:1fr 1fr;grid-template-areas:"head bars" "context context";gap:var(--s1)}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-headlines>div{min-height:15mm}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-context{grid-template-columns:repeat(3,1fr)}
 
 /* Densité maîtrisée : la même grammaire que la fiche complète, réduite */
 .summary-page .result-section,.summary-page .octe-theme{padding:var(--s2) var(--s3)}
@@ -396,10 +409,12 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .source-note{display:none}
 
 .summary-page .viz-key{grid-template-columns:1fr;grid-template-rows:auto auto;gap:var(--s1)}
+.summary-page .viz-key>h3{grid-column:1;grid-row:1;white-space:nowrap}
 .summary-page .viz-key .data-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:var(--s1)}
+.summary-page .viz-key>.data-grid{grid-column:1;grid-row:2;width:100%}
 .summary-page .viz-key .data-grid>div{min-height:0;padding:1.8mm 2.4mm}
 .summary-page .viz-key .data-grid dt{font-size:6.2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-page .viz-key .data-grid dd{font-size:8.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-page .viz-key .data-grid dd{font-size:8.5pt;line-height:1.15;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word}
 .summary-page .commune-map-card{display:none}
 
 .summary-page .demography-kpis{grid-template-columns:repeat(3,1fr);gap:var(--s1);margin-bottom:var(--s1)}
