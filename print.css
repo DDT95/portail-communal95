@@ -357,8 +357,6 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .octe-status-matrix .is-negative{border-top-color:var(--bad);background:var(--bad-soft)}
 .octe-status-matrix .is-negative b{color:var(--bad)}
 .octe-status-summary{display:none}
-
-.octe-mobility .octe-data-grid{grid-template-columns:repeat(2,1fr)}
 .octe-planning .octe-status-matrix{grid-template-columns:repeat(3,1fr)}
 
 /* =====================================================================
@@ -379,9 +377,19 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-governance span{font-size:6pt;color:var(--muted);text-transform:uppercase}
 .summary-governance b{margin:0;font-size:7pt;color:var(--ink)}
 
-.summary-columns{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);align-items:stretch;flex:1;min-height:0;overflow:hidden}
-.summary-columns>div{display:flex;min-width:0;flex-direction:column;gap:var(--s2)}
-.summary-columns .result-section,.summary-columns .octe-theme{flex:0 1 auto;min-height:0;overflow:hidden}
+.summary-dashboard{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "economy economy";gap:var(--s2);align-items:stretch;min-height:0;overflow:hidden}
+.summary-dashboard>[data-section-title="Chiffres clés"]{grid-area:key}
+.summary-dashboard>[data-section-title="Population et dynamiques sociales"],.summary-dashboard>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}
+.summary-dashboard>[data-section-title="Logement"]{grid-area:housing}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"]{grid-area:land}
+.summary-dashboard>[data-section-title="Économie locale"]{grid-area:economy}
+.summary-dashboard>.result-section{min-width:0;min-height:0;overflow:hidden;margin:0}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"]{display:flex;flex-direction:column}
+.summary-dashboard>[data-section-title="Occupation du sol (MOS 2025)"] .land-overview{flex:1;align-items:center;align-content:center}
+.summary-dashboard>[data-section-title="Logement"]>.data-grid{display:none}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-viz{grid-template-columns:1fr 1fr;grid-template-areas:"head bars" "context context";gap:var(--s1)}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-headlines>div{min-height:15mm}
+.summary-dashboard>[data-section-title="Économie locale"] .economy-context{grid-template-columns:repeat(3,1fr)}
 
 /* Densité maîtrisée : la même grammaire que la fiche complète, réduite */
 .summary-page .result-section,.summary-page .octe-theme{padding:var(--s2) var(--s3)}
@@ -392,7 +400,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .viz-key .data-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1)}
 .summary-page .viz-key .data-grid>div{min-height:0;padding:1.8mm 2.4mm}
 .summary-page .viz-key .data-grid dt{font-size:6.2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-page .viz-key .data-grid dd{font-size:8.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-page .viz-key .data-grid dd{font-size:8.5pt;line-height:1.15;white-space:normal;overflow-wrap:break-word}
 
 .summary-page .demography-kpis{grid-template-columns:repeat(3,1fr);gap:var(--s1);margin-bottom:var(--s1)}
 .summary-page .demography-kpis>div{padding:1.8mm}
@@ -442,6 +450,18 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .territorial-reading article strong{color:var(--good);font-size:8pt;font-weight:700;line-height:1.15}
 .territorial-reading article+article strong{color:var(--warn)}
 .territorial-reading article span{min-width:0}
+
+/* Conclusion compacte dans le flux normal : seule la zone basse est corrigée. */
+.summary-page .territorial-reading{box-sizing:border-box;height:36mm;margin-top:2mm;padding:2mm 3mm;overflow:hidden;flex:none}
+.summary-page .territorial-reading>header{margin-bottom:1mm;padding-bottom:.8mm}
+.summary-page .territorial-reading article{min-height:26mm;padding:1.2mm 2mm}
+
+/* Mobilités : grille compacte pour préserver l'offre détaillée et le folio.
+   Ciblé par thème (jamais par numéro de page, qui varie selon la commune). */
+.octe-mobility .octe-data-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm}
+.octe-mobility .octe-data-item{min-height:0;padding:2.2mm 2.5mm}
+.octe-mobility .octe-data-item dt{font-size:7.5pt}
+.octe-mobility .octe-data-item dd{font-size:9pt;line-height:1.2}
 
 /* =====================================================================
    IMPRESSION
