@@ -167,8 +167,9 @@
   }
 
   function pageHtml(title, content, index, total, className = '') {
+    const isSummary = className.includes('summary-page');
     return `<div class="data-page ${className}" id="dataPage-${index}">
-      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(title)}</strong></div></header>
+      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(isSummary ? title : state.nom)}</strong>${isSummary ? '' : `<em>${escapeHtml(title)}</em>`}</div></header>
       <div class="data-body">${content}</div>
       <footer class="data-foot"><span>${escapeHtml(state.nom)} · code INSEE ${escapeHtml(state.code || '')}</span><span>${index + 1}/${total} · ${today}</span></footer>
     </div>`;
@@ -236,20 +237,75 @@
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
     const portal = portalSections();
+    const completePct = (sectionTitle, label) => {
+      const section = portal.find(s => s.dataset.sectionTitle === sectionTitle);
+      const row = section ? [...section.querySelectorAll('.data-grid>div')].find(r => r.querySelector('dt')?.textContent.includes(label)) : null;
+      const match = row?.querySelector('dd')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
+      return match ? Number(match[1].replace(',', '.')) : null;
+    };
+    const completeProfile = [
+      ['Pauvreté', completePct('Démographie, revenus et emploi', 'pauvreté')],
+      ['Chômage', completePct('Démographie, revenus et emploi', 'chômage')],
+      ['Logement social', completePct('Logement', 'logement social')],
+      ['Vacance', completePct('Logement', 'vacants')],
+      ['Maisons', completePct('Logement', 'Maisons')],
+      ['Appartements', completePct('Logement', 'Appartements')]
+    ].filter(([, value]) => value != null);
+    const completeKey = portal.find(s => s.dataset.sectionTitle === 'Chiffres clés');
+    if (completeKey && completeProfile.length && !completeKey.querySelector('.profile-chart')) completeKey.insertAdjacentHTML('beforeend', `<div class="profile-chart"><h4>Profil social et résidentiel</h4><div>${completeProfile.map(([label, value]) => `<figure><div><i style="height:${value}%"></i></div><b>${value.toFixed(1)} %</b><figcaption>${escapeHtml(label)}</figcaption></figure>`).join('')}</div></div>`);
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
-    const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(t => `<section class="octe-theme"><h2>${escapeHtml(t.title)}</h2><div class="octe-badge">DONNÉES OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`).join('');
+    const octeThemeHtml = theme => {
+      const entries = [];
+      const statusItems = [];
+      let pendingLabel = '';
+      theme.lines.forEach(rawLine => {
+        const parts = cleanOcteLine(rawLine).split(/\s*·\s*/).map(part => part.trim()).filter(Boolean);
+        parts.forEach(part => {
+          const visualStatus = part.match(/^(.{4,}?)\s+(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i);
+          if (visualStatus) statusItems.push({ label: visualStatus[1].trim(), value: visualStatus[2] });
+          const colon = part.indexOf(':');
+          if (colon >= 0) {
+            if (pendingLabel) entries.push({ label: pendingLabel, value: 'Non renseigné' });
+            pendingLabel = '';
+            const label = part.slice(0, colon).trim();
+            const value = part.slice(colon + 1).trim();
+            if (label && value) entries.push({ label, value });
+            else pendingLabel = label || pendingLabel;
+          } else if (pendingLabel) {
+            entries.push({ label: pendingLabel, value: part });
+            pendingLabel = '';
+          } else {
+            const statusMatch = part.match(/^(.{4,}?)\s+(Oui|Non|Approuvé|Pas signée?|Carencée?|\-)$/i);
+            if (statusMatch) entries.push({ label: statusMatch[1].trim(), value: statusMatch[2] });
+          }
+        });
+      });
+      if (pendingLabel) entries.push({ label: pendingLabel, value: 'Non renseigné' });
+      const statuses = statusItems.filter((item, index, all) => all.findIndex(other => other.label === item.label) === index).slice(0, 24);
+      const themeText = theme.lines.join(' ');
+      const positiveCount = (themeText.match(/\b(?:Oui|Approuvé|Signée?)\b/gi) || []).length;
+      const negativeCount = (themeText.match(/\b(?:Non|Pas signée?)\b/gi) || []).length;
+      const statusTotal = positiveCount + negativeCount;
+      const meaningful = entries.filter(entry => entry.label && entry.value && !/^[#]+$/.test(entry.value) && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value.trim()));
+      return `<section class="octe-theme"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> orientations ou dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${meaningful.map(entry => {
+        const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
+        const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
+        return `<div class="octe-data-item${entry.label ? '' : ' octe-data-note'}"><dt>${escapeHtml(entry.label || 'Repère')}</dt><dd${status ? ' class="octe-status"' : ''}>${escapeHtml(entry.value)}</dd>${pct ? `<i aria-hidden="true"><span style="width:${Math.min(100, Number(pct[1].replace(',', '.')))}%"></span></i>` : ''}</div>`;
+      }).join('')}</div></section>`;
+    };
+    const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
     const integratedGroups = [
       ['Repères territoriaux et gouvernance', ['Données générales'], ['Chiffres clés', 'Élus et gouvernance']],
       ['Population, revenus et emploi', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
       ['Habitat et statuts d’occupation', ['Habitat logements'], ['Logement']],
       ['Foncier, économie et occupation du sol', ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
-      ['Planification et démarches territoriales', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
-      ['Mobilités, services, eau et énergie', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Sécurité', 'Artificialisation, eau et énergie']],
+      ['Planification, démarches et sécurité', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville', 'Sécurité']],
+      ['Mobilités, eau et transition énergétique', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
       ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés']]
     ];
-    const pages = integratedGroups.map(([title, octeNames, enrichedNames]) => ({ title, html: `${warning}${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
+    const pages = integratedGroups.map(([title, octeNames, enrichedNames]) => ({ title, html: `${warning}${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
   }
 

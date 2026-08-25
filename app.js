@@ -390,7 +390,7 @@ async function loadCommune(code, nomHint) {
     });
 
     await Promise.all([...early, loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour)]);
-    loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
+    state.mosPromise = loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
     setupDynamicLayers();
     renderControls();
     renderFicheDrawer(true);
@@ -1303,8 +1303,11 @@ $('openExport').addEventListener('click', () => exportDialog.showModal());
 $('closeExport').addEventListener('click', () => exportDialog.close());
 exportDialog.addEventListener('click', e => { if (e.target === exportDialog) exportDialog.close(); });
 
-function openPrintPage(mode) {
+async function openPrintPage(mode) {
   exportDialog.close();
+  if (mode !== 'carte' && state.mosPromise) {
+    await Promise.race([state.mosPromise, new Promise(resolve => setTimeout(resolve, 4500))]);
+  }
   renderFicheDrawer(true);
   if (mode !== 'carte') {
     localStorage.setItem('pc-export-snapshot', JSON.stringify({
