@@ -308,7 +308,7 @@ function buildLandingMap() {
     $('layer-list').innerHTML = sorted.length ? sorted.map(c => {
       const checked = compareSelection.has(c.code);
       const disabled = !checked && compareSelection.size >= 3;
-      const surfLabel = c.surface ? `${formatNumber(Math.round(c.surface / 100) / 10)} km²` : null;
+      const surfLabel = c.surface ? `${formatNumber(Math.round(c.surface / 10) / 10)} km²` : null;
       return `<div class="commune-row" style="${disabled ? 'opacity:.45' : ''}"><button class="switch" type="button" data-compare="${c.code}" data-nom="${escapeHtml(c.nom)}" aria-label="Sélectionner ${escapeHtml(c.nom)} pour comparer" aria-pressed="${checked}" ${disabled ? 'disabled' : ''}></button><div class="commune-row-body" data-code="${c.code}" data-nom="${escapeHtml(c.nom)}"><strong>${escapeHtml(c.nom)}</strong><span>${c.population ? formatNumber(c.population) + ' hab.' : '—'}${surfLabel ? ' · ' + surfLabel : ''}</span></div></div>`;
     }).join('') : '<p class="source-note">Aucune commune ne correspond à ces filtres.</p>';
     $('layer-list').querySelectorAll('.commune-row-body').forEach(row => row.addEventListener('click', () => goToCommune(row.dataset.code, row.dataset.nom)));
@@ -521,7 +521,7 @@ function renderFicheDrawer(open) {
 
   const kpiRows = [
     ['Population', state.kpi.population ? `${formatNumber(state.kpi.population)} habitants` : null],
-    ['Superficie', state.kpi.surface ? `${formatNumber(Math.round(state.kpi.surface / 100) / 10)} km²` : null],
+    ['Superficie', state.kpi.surface ? `${formatNumber(Math.round(state.kpi.surface / 10) / 10)} km²` : null],
     ['Intercommunalité', state.kpi.epci && state.kpi.epci !== '…' ? state.kpi.epci : null],
     ['Code INSEE', state.kpi.code]
   ].filter(([, v]) => v);

@@ -302,9 +302,13 @@
         // Le cadre géographique est volontairement élargi avant fitBounds :
         // le contour conserve ainsi une marge visible, même si le bloc change
         // encore légèrement de taille pendant la composition A4.
-        const framedBounds = boundary.getBounds().pad(compact ? 0.32 : 0.24);
-        map.fitBounds(framedBounds, { paddingTopLeft: padding, paddingBottomRight: padding, maxZoom: compact ? 12 : 13, animate: false });
-        map.panTo(framedBounds.getCenter(), { animate: false });
+        const rawBounds = boundary.getBounds();
+        const framedBounds = rawBounds.pad(compact ? 0.28 : 0.20);
+        const zoom = map.getBoundsZoom(framedBounds, false, L.point(padding[0] * 2, padding[1] * 2));
+        // setView impose explicitement le centre géométrique. Contrairement à
+        // fitBounds, le cadrage ne dépend alors plus d'un redimensionnement
+        // tardif du conteneur pendant la composition du PDF.
+        map.setView(rawBounds.getCenter(), Math.min(zoom, compact ? 13 : 14), { animate: false, reset: true });
       };
       recenter();
       const observer = new ResizeObserver(recenter);
@@ -560,7 +564,7 @@
     const integratedGroups = [
       ['Repères territoriaux et gouvernance', [], ['Chiffres clés', 'Élus et gouvernance']],
       ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
-      ['Habitat et logement', ['Habitat logements'], ['Logement']],
+      ['Habitat et logement', [], ['Logement']],
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
       ['Économie et emploi', ['Développement économique'], ['Économie locale']],
       ['Planification et projets territoriaux', ['Données générales', 'Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
@@ -569,6 +573,11 @@
       ['Risques et sécurité', ['Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés', 'Sécurité']]
     ];
     const pages = integratedGroups.map(([title, octeNames, enrichedNames], index) => ({ title, html: `${warning}${index === 0 ? `${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` : `${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}`}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
+    // Le volet OCTE habitat est volontairement isolé sur une page dédiée :
+    // ses nombreux indicateurs restent tous lisibles sans comprimer ni couper
+    // la page consacrée au marché et au profil du parc.
+    const housingOfficial = officialHtml(['Habitat logements']);
+    if (housingOfficial) pages.push({ title: 'Cadre réglementaire du logement', html: `${warning}${housingOfficial}` });
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
   }
 
