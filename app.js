@@ -1311,7 +1311,7 @@ async function openPrintPage(mode) {
   renderFicheDrawer(true);
   if (mode !== 'carte') {
     localStorage.setItem('pc-export-snapshot', JSON.stringify({
-      state: { nom: state.nom, code: state.code },
+      state: { nom: state.nom, code: state.code, contour: state.contour },
       drawerHtml: $('drawer-body').innerHTML,
       octeUrl: `${CFG.pdfBase}/${encodeURIComponent(state.nom)}.pdf`
     }));

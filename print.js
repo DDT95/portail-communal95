@@ -157,6 +157,22 @@
         row.insertAdjacentHTML('beforeend', `<i class="value-meter" aria-hidden="true"><span style="width:${pct}%"></span></i>`);
       }
     });
+    if (title === 'Occupation du sol (MOS 2025)') {
+      const rows = [...section.querySelectorAll('.data-grid>div')].map(row => {
+        const label = row.querySelector('dt')?.textContent.trim() || '';
+        const value = row.querySelector('dd')?.textContent.trim() || '';
+        const pct = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
+        return { label, value, pct: pct ? Number(pct[1].replace(',', '.')) : null };
+      });
+      const surface = rows.find(row => /superficie communale/i.test(row.label));
+      const parts = rows.filter(row => row.pct != null).slice(0, 5);
+      const colors = ['#d05a3f', '#e2a33a', '#26875a', '#4a78b8', '#7b4ab5'];
+      if (parts.length) {
+        section.querySelector('.donut-wrap')?.remove();
+        section.querySelector('.data-grid')?.remove();
+        section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="land-overview">${surface ? `<div class="land-total"><b>${escapeHtml(surface.value)}</b><span>surface communale</span></div>` : ''}<div class="land-composition"><div class="land-band">${parts.map((row, i) => `<i style="width:${row.pct}%;background:${colors[i % colors.length]}"></i>`).join('')}</div><div class="land-legend">${parts.map((row, i) => `<div><i style="background:${colors[i % colors.length]}"></i><span>${escapeHtml(row.label)}</span><b>${row.pct.toFixed(1)} %</b><small>${escapeHtml(row.value.replace(/\s*[·-]\s*\d+(?:[.,]\d+)?\s*%/, ''))}</small></div>`).join('')}</div></div></div>`);
+      }
+    }
     return section;
   }
 
@@ -168,11 +184,32 @@
 
   function pageHtml(title, content, index, total, className = '') {
     const isSummary = className.includes('summary-page');
+    const isOpening = !isSummary && index === 0;
     return `<div class="data-page ${className}" id="dataPage-${index}">
-      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(isSummary ? title : state.nom)}</strong>${isSummary ? '' : `<em>${escapeHtml(title)}</em>`}</div></header>
+      <header class="data-page-head"><img src="prefet-val-doise.svg" alt=""><div><span>PORTAIL COMMUNAL · VAL-D’OISE</span><strong>${escapeHtml(isSummary ? title : (isOpening ? state.nom : title))}</strong>${isSummary ? '' : (isOpening ? `<em>${escapeHtml(title)}</em>` : '')}</div></header>
       <div class="data-body">${content}</div>
       <footer class="data-foot"><span>${escapeHtml(state.nom)} · code INSEE ${escapeHtml(state.code || '')}</span><span>${index + 1}/${total} · ${today}</span></footer>
     </div>`;
+  }
+
+  function miniMapHtml() {
+    return `<figure class="commune-map-card"><div class="commune-mini-map" aria-label="Emprise cartographique de ${escapeHtml(state.nom)}"></div><figcaption><b>Emprise communale</b><span>Fond cartographique gris · © OpenStreetMap</span></figcaption></figure>`;
+  }
+
+  async function initMiniMaps() {
+    const hosts = [...document.querySelectorAll('.commune-mini-map')];
+    if (!hosts.length || !state.contour || !window.L) return;
+    await Promise.all(hosts.map(host => new Promise(resolve => {
+      const map = L.map(host, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false });
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, crossOrigin: true }).addTo(map);
+      const boundary = L.geoJSON(state.contour, { style: { color: '#000091', weight: 3, opacity: 1, fillColor: '#6f78c8', fillOpacity: .16 } }).addTo(map);
+      map.fitBounds(boundary.getBounds(), { padding: [12, 12] });
+      map.invalidateSize();
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; setTimeout(resolve, 250); } };
+      tiles.once('load', done);
+      setTimeout(done, 1400);
+    })));
   }
 
   function buildSynthese() {
@@ -195,6 +232,7 @@
     const selected = sections.filter(s => wanted.includes(s.dataset.sectionTitle || '')).map(s => {
       const clone = s.cloneNode(true);
       clone.querySelectorAll('.source-note').forEach(n => n.remove());
+      if (s.dataset.sectionTitle === 'Chiffres clés') clone.insertAdjacentHTML('afterbegin', miniMapHtml());
       if (s.dataset.sectionTitle === 'Chiffres clés' && profileValues.length) clone.insertAdjacentHTML('beforeend', `<div class="profile-chart"><h4>Profil social et résidentiel</h4><div>${profileValues.map(([label, value]) => `<figure><div><i style="height:${value}%"></i></div><b>${value.toFixed(1)} %</b><figcaption>${escapeHtml(label)}</figcaption></figure>`).join('')}</div></div>`);
       return clone.outerHTML;
     });
@@ -243,23 +281,26 @@
       const match = row?.querySelector('dd')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
       return match ? Number(match[1].replace(',', '.')) : null;
     };
-    const completeProfile = [
-      ['Pauvreté', completePct('Démographie, revenus et emploi', 'pauvreté')],
-      ['Chômage', completePct('Démographie, revenus et emploi', 'chômage')],
-      ['Logement social', completePct('Logement', 'logement social')],
-      ['Vacance', completePct('Logement', 'vacants')],
-      ['Maisons', completePct('Logement', 'Maisons')],
-      ['Appartements', completePct('Logement', 'Appartements')]
-    ].filter(([, value]) => value != null);
     const completeKey = portal.find(s => s.dataset.sectionTitle === 'Chiffres clés');
-    if (completeKey && completeProfile.length && !completeKey.querySelector('.profile-chart')) completeKey.insertAdjacentHTML('beforeend', `<div class="profile-chart"><h4>Profil social et résidentiel</h4><div>${completeProfile.map(([label, value]) => `<figure><div><i style="height:${value}%"></i></div><b>${value.toFixed(1)} %</b><figcaption>${escapeHtml(label)}</figcaption></figure>`).join('')}</div></div>`);
+    if (completeKey && !completeKey.querySelector('.commune-map-card')) completeKey.insertAdjacentHTML('afterbegin', miniMapHtml());
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const octeThemeHtml = theme => {
       const entries = [];
       const statusItems = [];
+      const complements = [];
       let pendingLabel = '';
       theme.lines.forEach(rawLine => {
+        const leaderMatches = [...rawLine.matchAll(/([^:]{2,}?)\s*:\s*\.{2,}\s*(.*?)(?=\s{2,}[^:]{2,}?\s*:\s*\.{2,}|$)/g)];
+        if (leaderMatches.length) {
+          leaderMatches.forEach(match => {
+            const label = match[1].trim();
+            const value = (match[2].split(/\.{4,}/)[0].trim() || 'Non renseigné');
+            if (label) entries.push({ label, value });
+            if (/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(value)) statusItems.push({ label, value });
+          });
+          return;
+        }
         const parts = cleanOcteLine(rawLine).split(/\s*·\s*/).map(part => part.trim()).filter(Boolean);
         parts.forEach(part => {
           const visualStatus = part.match(/^(.{4,}?)\s+(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i);
@@ -278,20 +319,43 @@
           } else {
             const statusMatch = part.match(/^(.{4,}?)\s+(Oui|Non|Approuvé|Pas signée?|Carencée?|\-)$/i);
             if (statusMatch) entries.push({ label: statusMatch[1].trim(), value: statusMatch[2] });
+            else if (part.length > 3 && !/^[-#]+$/.test(part)) complements.push(part);
           }
         });
       });
       if (pendingLabel) entries.push({ label: pendingLabel, value: 'Non renseigné' });
+      const schemaSource = theme.title === 'Indicateurs socio-démographiques'
+        ? theme.lines.filter(line => /habitants|hab\/Km/i.test(line)).join(' ')
+        : theme.title === 'Occupation du sol communal'
+          ? theme.lines.filter(line => /\bHa\b/i.test(line)).join(' ')
+          : theme.title === 'Espaces Naturels Agricoles et forestiers'
+            ? theme.lines.filter(line => /\bha\b/i.test(line)).join(' ')
+            : '';
+      const numbers = schemaSource.match(/-?\d+(?:[.,]\d+)?(?:\s*hab\/Km²|\s*habitants|\s*hab\.?|\s*%|\s*Ha|\s*ha)?/g) || [];
+      const schemaLabels = {
+        'Occupation du sol communal': ['Superficie communale', 'Espaces construits', 'Espaces ouverts', 'Espaces agricoles, forestiers et naturels', 'Superficie intercommunale', 'Espaces construits - intercommunalité', 'Espaces ouverts - intercommunalité', 'Espaces agricoles, forestiers et naturels - intercommunalité'],
+        'Indicateurs socio-démographiques': ['Population municipale', 'Croissance annuelle', 'Densité', 'Solde naturel', 'Solde migratoire', 'Taille moyenne des ménages', 'Population intercommunale', 'Croissance intercommunale', 'Densité intercommunale', 'Solde naturel intercommunal', 'Solde migratoire intercommunal', 'Taille moyenne des ménages - intercommunalité'],
+        'Espaces Naturels Agricoles et forestiers': ['Surface agricole utile', 'Évolution des espaces agricoles', 'Surface forestière', 'Forêt de protection']
+      }[theme.title];
+      if (schemaLabels && !entries.length) {
+        const schemaValues = theme.title === 'Occupation du sol communal' && numbers.length >= 14
+          ? [numbers[0], `${numbers[1]} · ${numbers[2]}`, `${numbers[3]} · ${numbers[4]}`, `${numbers[5]} · ${numbers[6]}`, numbers[7], `${numbers[8]} · ${numbers[9]}`, `${numbers[10]} · ${numbers[11]}`, `${numbers[12]} · ${numbers[13]}`]
+          : numbers;
+        schemaLabels.forEach((label, index) => { if (schemaValues[index] != null) entries.push({ label, value: schemaValues[index] }); });
+      }
       const statuses = statusItems.filter((item, index, all) => all.findIndex(other => other.label === item.label) === index).slice(0, 24);
       const themeText = theme.lines.join(' ');
       const positiveCount = (themeText.match(/\b(?:Oui|Approuvé|Signée?)\b/gi) || []).length;
       const negativeCount = (themeText.match(/\b(?:Non|Pas signée?)\b/gi) || []).length;
       const statusTotal = positiveCount + negativeCount;
-      const meaningful = entries.filter(entry => entry.label && entry.value && !/^[#]+$/.test(entry.value) && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value.trim()));
-      return `<section class="octe-theme"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> orientations ou dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${meaningful.map(entry => {
+      const meaningful = entries.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^[#]+$/.test(entry.value) && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value.trim()));
+      if (!meaningful.length && !statuses.length && statusTotal < 2) return '';
+      const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
+      return `<section class="octe-theme${meaningful.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>DONNÉES OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${meaningful.map(entry => {
         const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
-        return `<div class="octe-data-item${entry.label ? '' : ' octe-data-note'}"><dt>${escapeHtml(entry.label || 'Repère')}</dt><dd${status ? ' class="octe-status"' : ''}>${escapeHtml(entry.value)}</dd>${pct ? `<i aria-hidden="true"><span style="width:${Math.min(100, Number(pct[1].replace(',', '.')))}%"></span></i>` : ''}</div>`;
+        const context = contextFor(entry.label);
+        return `<div class="octe-data-item"><dt>${escapeHtml(entry.label)}</dt><dd${status ? ' class="octe-status"' : ''}>${escapeHtml(entry.value)}</dd>${context ? `<p>${escapeHtml(context)}</p>` : ''}${pct ? `<i aria-hidden="true"><span style="width:${Math.min(100, Number(pct[1].replace(',', '.')))}%"></span></i>` : ''}</div>`;
       }).join('')}</div></section>`;
     };
     const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
@@ -333,6 +397,6 @@
     window.location.replace(blobUrl);
   }
 
-  const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => new Promise(r => setTimeout(r, 500)));
+  const ready = mode === 'carte' ? buildCarte() : (mode === 'synthese' ? Promise.resolve(buildSynthese()) : buildComplete()).then(() => initMiniMaps()).then(() => new Promise(r => setTimeout(r, 350)));
   ready.then(() => buildPdf()).catch(err => { console.error(err); statusEl.textContent = 'La génération du PDF a échoué. Réessayez depuis la fiche.'; });
 })();
