@@ -371,7 +371,7 @@
           : numbers;
         schemaLabels.forEach((label, index) => { if (schemaValues[index] != null) entries.push({ label, value: schemaValues[index] }); });
       }
-      const statuses = statusItems.filter((item, index, all) => all.findIndex(other => other.label === item.label) === index).slice(0, 24);
+      let statuses = statusItems.filter((item, index, all) => all.findIndex(other => other.label === item.label) === index).slice(0, 24);
       const themeText = theme.lines.join(' ');
       const positiveCount = (themeText.match(/\b(?:Oui|Approuvé|Signée?)\b/gi) || []).length;
       const negativeCount = (themeText.match(/\b(?:Non|Pas signée?)\b/gi) || []).length;
@@ -379,12 +379,76 @@
       const normalizeLabel = label => label.replace(/princi\s+pales/gi, 'principales').replace(/^à l’EPCI\s*/i, '').replace(/\s{2,}/g, ' ').replace(/\.{3,}.*$/, '').trim();
       const normalizeValue = value => value.replace(/\.{3,}.*$/, '').replace(/^\]x\[$/, 'Secret statistique').replace(/^#N\/D(?:\s*m²)?$/i, 'Non disponible').replace(/^n\.c\.?$/i, 'Non communiqué').trim();
       const normalized = entries.map(entry => ({ label: normalizeLabel(entry.label), value: normalizeValue(entry.value) }));
-      const meaningful = normalized.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value));
-      const unavailable = meaningful.filter(entry => /^(Non disponible|Non communiqué|Secret statistique|-)$/i.test(entry.value));
-      const available = meaningful.filter(entry => !unavailable.includes(entry));
-      if (!meaningful.length && !statuses.length && statusTotal < 2) return '';
+      let meaningful = normalized.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value));
+      const brokenValue = entry => /:\s|^\-\s+\p{L}{3}|Plan de prévention|Installation classée|Quartiers prioritaires de la politique/i.test(entry.value) || /\b(?:Basias|Monuments historiques|Natura 2000 ZSC)\b/i.test(entry.label) && entry.label.split(/\s+/).length > 7;
+      let unavailable = meaningful.filter(entry => /^(Non disponible|Non communiqué|Secret statistique|-)$/i.test(entry.value) || brokenValue(entry));
+      let available = meaningful.filter(entry => !unavailable.includes(entry));
+      let thematicViz = '';
+      const extractLeaderValue = (label, values) => {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = themeText.match(new RegExp(escaped + '\\s*:?\\s*\\.{2,}\\s*(' + values + ')', 'i'));
+        return match?.[1]?.trim() || null;
+      };
+      const extractPatternValue = (pattern, values) => {
+        const match = themeText.match(new RegExp(pattern + '\\s*:?\\s*\\.{2,}\\s*(' + values + ')', 'i'));
+        return match?.[1]?.trim() || null;
+      };
+      if (theme.title === 'Démarches territoriales') {
+        const fields = ['Convention EPFIF', 'ZAD', 'DPU', 'ANRU', 'ZAC : État', 'ZAC : Commune', 'ZAC : Intercommunalité', 'Quartiers prioritaires de la politique de la ville (QPV)', 'Quartiers de veille active (QVA)', 'Écoquartier', 'DUP', 'CDT (EPCI)', 'CIN (EPCI)', 'Action « Cœur de ville »', 'ORT (EPCI)', 'CMS', 'CPER', 'Contrat de ruralité (EPCI)', 'PPA'];
+        const extract = label => {
+          const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\((QPV|QVA|EPCI)\\\)/g, '(?:\\($1\\))?');
+          const match = themeText.match(new RegExp(escaped + '\\s*:?\\s*\\.{2,}\\s*(Oui|Non|Approuvé|Pas signée|\\-)', 'i'));
+          return match?.[1] || null;
+        };
+        const extracted = fields.map(label => ({ label, value: extract(label) })).filter(item => item.value);
+        const canonicalStatus = item => {
+          const field = fields.find(label => {
+            const core = label.replace(/\s*\([^)]*\)/g, '').replace(/[«»]/g, '').replace(/ZAC\s*:\s*/i, '').trim();
+            return core.length > 2 && item.label.toLocaleLowerCase('fr').includes(core.toLocaleLowerCase('fr'));
+          });
+          return field ? { label: field, value: item.value } : null;
+        };
+        const recoveredStatuses = statusItems.map(canonicalStatus).filter(Boolean);
+        const actionCoeur = themeText.match(/Action\s*[«"]?\s*Cœur de ville\s*[»"]?[\s.:…-]{1,80}(oui|non)/i)?.[1];
+        if (actionCoeur) recoveredStatuses.push({ label: 'Action « Cœur de ville »', value: actionCoeur });
+        statuses = [...extracted.filter(item => !/^-$/.test(item.value)), ...recoveredStatuses].filter((item, index, all) => all.findIndex(other => other.label === item.label) === index);
+        available = [];
+        unavailable = fields.filter(label => !statuses.some(item => item.label === label)).map(label => ({ label, value: '-' }));
+      }
+      if (theme.title === 'Patrimoine écologique, paysager et bâtis protégés') {
+        const pick = (label, labelPattern, valuePattern) => {
+          const found = normalized.find(item => labelPattern.test(item.label) && valuePattern.test(item.value));
+          return found ? { label, value: found.value.match(valuePattern)?.[0] || found.value } : null;
+        };
+        available = [
+          pick('Parc naturel régional (PNR)', /^Parc naturel régional/i, /^(?!.*:)[\p{L}'’ -]{3,40}$/u),
+          pick('ZNIEFF', /(?:floristique|ZNIEFF)/i, /^\d+(?:\s+et\s+\d+)?$/i),
+          pick('Monuments historiques', /Monuments historiques/i, /^\d+$/),
+          pick('Règlement local de publicité', /Règlement local de publicité/i, /^(?:RNP|1G|2G)$/i)
+        ].filter(Boolean);
+        const zsc = themeText.match(/Natura 2000 ZSC[^:]{0,100}:\s*(?:\.*\s*)?(oui|non|-)/i)?.[1];
+        statuses = statusItems.filter(item => /Natura 2000 ZSC|Espace naturel sensible \(ENS\)/i.test(item.label)).map(item => ({ label: item.label.match(/Natura 2000 ZSC/i) ? 'Natura 2000 — ZSC' : 'Espace naturel sensible (ENS)', value: item.value }));
+        if (zsc && !statuses.some(item => /ZSC/i.test(item.label))) statuses.push({ label: 'Natura 2000 — ZSC', value: zsc });
+        unavailable = normalized.filter(item => /^-$/.test(item.value) && /Natura 2000 ZPS|Réserve naturelle|Sites patrimoniaux|biotope|Sites classés|Sites inscrits|ZICO/i.test(item.label));
+        const pnr = available.find(item => /Parc naturel/i.test(item.label))?.value || '—';
+        const znieff = available.find(item => /ZNIEFF/i.test(item.label))?.value || '—';
+        const monuments = available.find(item => /Monuments/i.test(item.label))?.value || '—';
+        const rlp = available.find(item => /publicité/i.test(item.label))?.value || '—';
+        thematicViz = `<div class="patrimony-viz"><div class="patrimony-identity"><span>Parc naturel régional</span><b>${escapeHtml(pnr)}</b></div><div class="patrimony-ring"><i>${escapeHtml(monuments)}</i><span>monuments historiques</span></div><div class="patrimony-ring alt"><i>${escapeHtml(znieff)}</i><span>types de ZNIEFF recensés</span></div><div class="patrimony-identity secondary"><span>Publicité extérieure</span><b>${escapeHtml(rlp)}</b></div></div>`;
+        available = [];
+      }
+      if (theme.title === 'Risques naturels et technologiques / Nuisances sonores') {
+        const riskValue = (label, pattern) => themeText.match(new RegExp(pattern + '[\\s\\S]{0,90}?(\\d{2}\\/\\d{2}\\/\\d{4})', 'i'))?.[1];
+        const r111 = riskValue('R111.3', 'R111\\.3');
+        const ppriPluvial = riskValue('PPRI Pluvial', 'PPRI Pluvial');
+        const ppriFluvial = riskValue('PPRI Fluvial', 'PPRI Fluvial');
+        const basias = normalized.find(entry => /Basias/i.test(entry.label) && /^\d+$/.test(entry.value));
+        available = [ppriPluvial && { label: 'PPRI pluvial', value: ppriPluvial }, ppriFluvial && { label: 'PPRI fluvial', value: ppriFluvial }, r111 && { label: 'Article R111.3', value: r111 }, basias && { label: 'Sites BASIAS', value: basias.value }].filter(Boolean);
+        unavailable = unavailable.filter(entry => !brokenValue(entry));
+      }
+      if (!available.length && !unavailable.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
-      return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${available.map(entry => {
+      return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
         const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
         const context = contextFor(entry.label);
