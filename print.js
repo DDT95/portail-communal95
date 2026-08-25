@@ -239,27 +239,24 @@
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
     const groups = [
-      ['Données générales', 'Déclinaison du SDRIF-E'],
-      ['Indicateurs socio-démographiques', 'Habitat logements'],
-      ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'],
-      ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'],
-      ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'],
-      ['Démarches territoriales']
+      ['Cadre territorial, démographie et planification', ['Données générales', 'Occupation du sol communal', 'Indicateurs socio-démographiques', 'Déclinaison du SDRIF-E']],
+      ['Économie, foncier et habitat', ['Développement économique', 'Espaces Naturels Agricoles et forestiers', 'Habitat logements']],
+      ['Mobilités, eau, énergie et démarches territoriales', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique', 'Démarches territoriales']],
+      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores']]
     ];
-    const contents = groups.flatMap(octeNames => {
-      const officialPages = octeNames.map(name => themes.find(t => t.title === name)).filter(Boolean).map(t => ({
-        title: t.title,
-        html: `${warning}<section class="octe-theme"><div class="octe-badge">SOURCE OFFICIELLE OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`
-      }));
-      return officialPages;
-    });
+    const contents = groups.map(([pageTitle, octeNames]) => {
+      const official = octeNames.map(name => themes.find(t => t.title === name)).filter(Boolean);
+      return {
+        title: pageTitle,
+        html: `${warning}${official.map(t => `<section class="octe-theme"><h2>${escapeHtml(t.title)}</h2><div class="octe-badge">SOURCE OFFICIELLE OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`).join('')}`
+      };
+    }).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
     const enrichedPages = [
       ['Gouvernance et services de sécurité', ['Chiffres clés', 'Élus et gouvernance', 'Sécurité']],
       ['Portrait démographique, social et économique', ['Démographie, revenus et emploi']],
       ['Habitat et statuts d’occupation', ['Logement']],
       ['Occupation du sol et trajectoire foncière', ['Occupation du sol (MOS 2025)']],
-      ['Risques et vulnérabilités territoriales', ['Risques majeurs recensés']],
-      ['Eau, énergie et politique de la ville', ['Artificialisation, eau et énergie', 'Politique de la ville']]
+      ['Risques, eau, énergie et politique de la ville', ['Risques majeurs recensés', 'Artificialisation, eau et énergie', 'Politique de la ville']]
     ].map(([title, names]) => ({ title, html: names.map(name => portalByTheme.get(name)).filter(Boolean).join('') })).filter(page => page.html);
     const pages = [...contents, ...enrichedPages];
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');

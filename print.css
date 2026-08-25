@@ -93,10 +93,12 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-foot{margin-top:4mm;padding-top:2mm;border-top:.2mm solid #d9deef;font-size:7.5pt;color:#666;flex:none;display:flex;justify-content:space-between}
 
 .octe-theme{margin-bottom:4mm;break-inside:avoid}
+.octe-theme:last-child{margin-bottom:0}
+.octe-theme h2{margin:0 0 2mm;padding:0 0 1.6mm;border-bottom:.35mm solid #b9c0df;background:none;border-left:0;color:#000091;font-size:10pt}
 .octe-badge{display:inline-block;margin-bottom:3mm;padding:1.5mm 2.5mm;border-radius:4mm;background:#eef0ff;color:#000091;font-size:6.5pt;font-weight:700;letter-spacing:.06em}
 .octe-theme h2{margin:0 0 2mm;padding:2.2mm 3mm;background:#eef0ff;border-left:1.2mm solid #000091;color:#000091;font-size:10pt}
 .octe-lines{columns:2;column-gap:7mm;column-rule:.2mm solid #e3e5ef}
-.octe-lines p{margin:0 0 .65mm;padding:1mm 1.4mm;break-inside:avoid;font-size:6.35pt;line-height:1.28;color:#252535;border-left:.5mm solid #dfe2f2;background:#f8f9fc}
+.octe-lines p{margin:0 0 .5mm;padding:.8mm 1.2mm;break-inside:avoid;font-size:6.15pt;line-height:1.22;color:#252535;border-left:.5mm solid #dfe2f2;background:#f8f9fc}
 .octe-lines p:nth-child(3n+1){border-left-color:#000091}
 .data-warning{padding:3mm;background:#fff4e5;border-left:1mm solid #e4794a;font-size:8pt}
 .complete-cover{min-height:105mm;padding:18mm 12mm;background:linear-gradient(145deg,#000091,#3a3a9f);color:#fff;display:flex;flex-direction:column;justify-content:center;border-radius:4mm}
