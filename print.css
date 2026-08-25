@@ -203,10 +203,10 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-governance{display:grid;grid-template-columns:25mm 1fr;align-items:center;gap:3mm;margin-bottom:1.5mm;padding:1.5mm 3mm;border:.3mm solid #cfd3ea;border-left:1.2mm solid #000091;border-radius:2mm}
 .summary-governance h2{margin:0;color:#000091;font-size:8pt;text-transform:uppercase;letter-spacing:.05em}
 .summary-governance>div{display:grid;grid-template-columns:repeat(2,1fr);gap:6mm}
-.summary-governance>div>div{min-width:0}
+.summary-governance>div>div{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:2mm;min-width:0}
 .summary-governance span,.summary-governance b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .summary-governance span{font-size:5.5pt;color:#777;text-transform:uppercase}
-.summary-governance b{margin-top:.5mm;font-size:6.3pt;color:#10104b}
+.summary-governance b{margin:0;font-size:6.3pt;color:#10104b}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "risks resources";gap:2.5mm;align-items:stretch}
 .summary-grid>[data-section-title="Chiffres clés"]{grid-area:key}.summary-grid>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}.summary-grid>[data-section-title="Logement"]{grid-area:housing}.summary-grid>[data-section-title="Occupation du sol (MOS 2025)"]{grid-area:land}.summary-grid>[data-section-title="Risques majeurs recensés"]{grid-area:risks}.summary-grid>[data-section-title="Artificialisation, eau et énergie"]{grid-area:resources}
 .summary-grid .result-section{padding:2.5mm 3mm;margin:0;border-radius:2.5mm;break-inside:avoid;min-width:0}
