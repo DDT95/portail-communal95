@@ -90,7 +90,7 @@ const PUBLIC_LAND_COLORS = { '1': '#e1000f', '2': '#6f4c9b', '3': '#000091', '4'
 
 const state = {
   code: null, nom: null, contour: null, contourLayer: null,
-  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null, securite: null,
+  elus: null, risques: [], qpv: [], kpi: {}, zan: null, eau: null, energie: null, services: [], finess: [], insee: null, mosSummary: null, securite: null, mobilitySummary: null,
   layers: {}, layerDefs: [], layerLoading: new Set(),
   drawerMode: 'commune'
 };
@@ -389,7 +389,7 @@ async function loadCommune(code, nomHint) {
       if (state.contourLayer) map.fitBounds(state.contourLayer.getBounds(), { padding: [28, 28], animate: false });
     });
 
-    await Promise.all([...early, loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour)]);
+    await Promise.all([...early, loadServices(state.nom, commune.contour), loadFiness(commune.contour), renderQpv(commune.contour), loadMobilitySummary(commune.contour)]);
     state.mosPromise = loadMosSummary(commune.contour).then(() => { if (state.code === code) renderFicheDrawer(); });
     setupDynamicLayers();
     renderControls();
@@ -546,6 +546,7 @@ function renderFicheDrawer(open) {
   const vacance = t.logement?.vacance?.taux_vacance_rp?.value;
   const eco = t.economie_equipements?.entreprises || {};
   const transport = t.emploi_mobilites?.transport || [];
+  const familles = t.habitants?.structure_familles?.repartition || [];
   const pctOf = (v, d) => v != null && d ? (v / d) * 100 : null;
 
   const demoRows = [
@@ -557,13 +558,14 @@ function renderFicheDrawer(open) {
     ['Emplois salariés', eco.emplois_salaries?.value ? formatNumber(Math.round(eco.emplois_salaries.value)) : null]
   ].filter(([, v]) => v);
   const ageDonut = pyramide.length ? donutChart(pyramide.map((tr, i) => ({ label: tr.label, pct: tr.pct, count: tr.value, color: ['#c76524', '#e4a86a', '#f2d0a8'][i] || '#c76524' }))) : '';
-  const transportRows = [...transport].sort((a, b) => b.pct - a.pct).slice(0, 5).map((tr, i) => [tr.label, tr.pct, ['#c76524', '#d68a4f', '#e4a86a', '#efc38f', '#f7ddb8'][i] || '#c76524']);
+  const familySegments = familles.filter(f => f.pct > 0).map((f, i) => ({ label: f.label, pct: f.pct, count: f.value, color: ['#0d5c63', '#4fa5ac', '#8fc7cb', '#c8e6e8'][i] || '#0d5c63' }));
+  const familyDonut = familySegments.length ? donutChart(familySegments) : '';
 
   const occSegs = [
     occ.proprietaires?.value != null ? { label: 'Propriétaires', pct: pctOf(occ.proprietaires.value, rp), count: occ.proprietaires.value, color: '#18753c' } : null,
     occ.locataires_prive?.value != null ? { label: 'Locataires (privé)', pct: pctOf(occ.locataires_prive.value, rp), count: occ.locataires_prive.value, color: '#0063cb' } : null,
     occ.locataires_social?.value != null ? { label: 'Locataires (social)', pct: pctOf(occ.locataires_social.value, rp), count: occ.locataires_social.value, color: '#6a4c93' } : null
-  ].filter(Boolean);
+  ].filter(segment => segment && segment.pct > 0);
   const occDonut = occSegs.length ? donutChart(occSegs) : '';
   const logementRows = [
     ['Résidences principales', rp ? formatNumber(Math.round(rp)) : null],
@@ -601,14 +603,17 @@ function renderFicheDrawer(open) {
     ['Téléphone', sec.telephone],
     ['Horaires', sec.horaires ? sec.horaires.replace(/;\s*/g, ' · ') : null]
   ].filter(([, v]) => v) : [];
+  const mobility = state.mobilitySummary;
+  const mobilityHtml = mobility ? `<section class="result-section mobility-section"><h3>Offre de mobilité</h3>${mobility.stops ? `<div class="mobility-kpis"><div><b>${formatNumber(mobility.stops)}</b><span>arrêts desservis</span></div><div><b>${formatNumber(mobility.lines)}</b><span>lignes régulières</span></div><div><b>${formatNumber(mobility.dailyServices)}</b><span>services quotidiens observés</span></div><div><b>${escapeHtml(mobility.first || '—')}–${escapeHtml(mobility.last || '—')}</b><span>amplitude de service</span></div></div>${mobility.routes.length ? `<div class="mobility-lines">${mobility.routes.map(route => `<div><span>${escapeHtml(route.label)}</span><b>${route.passages} passages/jour</b><small>${route.interval ? `environ toutes les ${route.interval} min` : 'fréquence non calculable'}</small></div>`).join('')}</div>` : ''}` : `<div class="nearest-stops"><strong>Aucun arrêt dans la commune</strong><span>Points d’accès les plus proches</span>${mobility.nearest.map(stop => `<div><b>${escapeHtml(stop.name)}</b><small>${stop.distance.toFixed(1)} km · ${stop.lines} ligne(s)</small></div>`).join('')}</div>`}<p class="source-note">Île-de-France Mobilités · horaires GTFS du réseau publié.</p></section>` : '';
 
   $('drawer-body').innerHTML = `
     <section class="result-section"><h3>Chiffres clés</h3><dl class="data-grid">${kpiRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>
     ${elusRows.length ? `<section class="result-section"><h3>Élus et gouvernance</h3><dl class="data-grid">${elusRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl></section>` : ''}
     ${secRows.length ? `<section class="result-section"><h3>Sécurité</h3><dl class="data-grid">${secRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${l === 'Téléphone' ? `<a href="tel:${escapeHtml(v.replace(/\s/g, ''))}">${escapeHtml(v)}</a>` : escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">SSMSI · OpenStreetMap — voir <a href="https://ddt95.github.io/val-doise-securite/" target="_blank" rel="noreferrer">Sécurité et prévention</a> pour la carte complète.</p></section>` : ''}
-    ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Pyramide des âges</p>${ageDonut}` : ''}${transportRows.length ? `<p class="fiche-subhead">Mode de transport domicile-travail</p>${barList(transportRows)}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
+    ${demoRows.length || ageDonut ? `<section class="result-section"><h3>Démographie, revenus et emploi</h3>${demoRows.length ? `<dl class="data-grid">${demoRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}${ageDonut ? `<p class="fiche-subhead">Structure par âge</p>${ageDonut}` : ''}${familyDonut ? `<p class="fiche-subhead">Structure des ménages</p>${familyDonut}` : ''}<p class="source-note">Insee · RP2023, Filosofi, REE 2024 — <a href="https://ddt95.github.io/VO-Insee/?type=commune&id=${state.code}" target="_blank" rel="noreferrer">Portrait Insee complet ↗</a></p></section>` : ''}
     ${logementRows.length || occDonut ? `<section class="result-section"><h3>Logement</h3>${occDonut ? `<p class="fiche-subhead">Statut d’occupation</p>${occDonut}` : ''}${logementRows.length ? `<dl class="data-grid">${logementRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>` : ''}<p class="source-note">Insee · RPLS — voir <a href="https://ddt95.github.io/observatoire_bati/" target="_blank" rel="noreferrer">Logement &amp; Habitat</a> pour le détail.</p></section>` : ''}
     ${mosRows.length ? `<section class="result-section"><h3>Occupation du sol (MOS 2025)</h3>${mosSegs.length ? donutChart(mosSegs) : ''}<dl class="data-grid">${mosRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Institut Paris Region — millésime 2025 · estimation sur l’emprise communale.</p></section>` : ''}
+    ${mobilityHtml}
     <section class="result-section"><h3>Risques majeurs recensés</h3><div class="risque-pills">${risquesHtml}</div><p class="source-note">Géorisques · GASPAR — consulter <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noreferrer">georisques.gouv.fr</a> pour le détail réglementaire.</p></section>
     ${territoireRows.length ? `<section class="result-section"><h3>Artificialisation, eau et énergie</h3><dl class="data-grid">${territoireRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">Cerema · Hub’Eau · Agence ORE — voir les lectures <a href="https://ddt95.github.io/artificialisation-zan95/" target="_blank" rel="noreferrer">ZAN</a>, <a href="https://ddt95.github.io/eau95/" target="_blank" rel="noreferrer">Eau</a> et <a href="https://ddt95.github.io/transition-energetique95/" target="_blank" rel="noreferrer">Transition énergétique</a> pour le détail.</p></section>` : ''}
     <section class="result-section"><h3>Politique de la ville</h3><dl class="data-grid">${villeRows.map(([l, v]) => `<div><dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl><p class="source-note">ANCT — quartiers prioritaires de la politique de la ville.</p></section>
@@ -956,6 +961,48 @@ async function loadMos() {
 
 let mobilityCache = null;
 const RAIL_GTFS_TYPES = ['0', '1', '2', '7']; // tram, métro, rail, funiculaire
+async function loadMobilitySummary(contour) {
+  try {
+    const loadMobility = mobilityCache || fetch(CFG.mobilityFile).then(r => r.text()).then(parseWindowJson);
+    mobilityCache = loadMobility;
+    const data = await loadMobility;
+    const stops = (data.stops || []).filter(stop => {
+      try { return turf.booleanPointInPolygon(turf.point([stop.lon, stop.lat]), contour); } catch { return false; }
+    });
+    const centre = turf.centroid(contour);
+    const nearest = [];
+    const seenNearest = new Set();
+    (data.stops || []).map(stop => ({ ...stop, distance: turf.distance(centre, turf.point([stop.lon, stop.lat]), { units: 'kilometers' }) })).sort((a, b) => a.distance - b.distance).forEach(stop => {
+      if (nearest.length >= 3 || seenNearest.has(stop.name)) return;
+      seenNearest.add(stop.name);
+      nearest.push({ name: stop.name, distance: stop.distance, lines: (stop.routes || []).length });
+    });
+    const routeIds = [...new Set(stops.flatMap(stop => stop.routes || []))];
+    const routeStats = routeIds.map(id => {
+      const route = data.routes?.[id] || {};
+      const samples = stops.map(stop => stop.times?.[id] || []).filter(times => times.length);
+      const times = samples.sort((a, b) => b.length - a.length)[0] || [];
+      const minutes = times.map(time => { const [h, m] = time.split(':').map(Number); return h * 60 + m; }).filter(Number.isFinite).sort((a, b) => a - b);
+      const span = minutes.length > 1 ? minutes.at(-1) - minutes[0] : 0;
+      const interval = minutes.length > 1 ? Math.round(span / (minutes.length - 1)) : null;
+      return { id, label: route.short || route.long || 'Ligne', passages: minutes.length, interval, first: times[0] || null, last: times.at(-1) || null, rail: RAIL_GTFS_TYPES.includes(String(route.type)) };
+    }).sort((a, b) => b.passages - a.passages);
+    const active = routeStats.filter(route => route.passages > 0);
+    state.mobilitySummary = {
+      stops: new Set(stops.map(stop => stop.name)).size,
+      lines: routeStats.length,
+      busLines: routeStats.filter(route => !route.rail).length,
+      railLines: routeStats.filter(route => route.rail).length,
+      dailyServices: active.reduce((sum, route) => sum + route.passages, 0),
+      first: active.map(route => route.first).filter(Boolean).sort()[0] || null,
+      last: active.map(route => route.last).filter(Boolean).sort().at(-1) || null,
+      routes: active.slice(0, 6), nearest
+    };
+  } catch (error) {
+    console.warn('Synthèse mobilités indisponible', error);
+    state.mobilitySummary = null;
+  }
+}
 function buildTransportLignes(isRail) {
   if (!state.contour) return Promise.resolve(null);
   const loadMobility = mobilityCache || fetch(CFG.mobilityFile).then(r => r.text()).then(parseWindowJson);

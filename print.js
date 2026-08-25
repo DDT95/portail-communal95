@@ -143,6 +143,7 @@
     const themes = {
       'Chiffres clés': ['key', '◆'], 'Élus et gouvernance': ['governance', '◎'], 'Sécurité': ['security', '◈'],
       'Démographie, revenus et emploi': ['demography', '●'], 'Logement': ['housing', '⌂'],
+      'Offre de mobilité': ['mobility', '↔'],
       'Occupation du sol (MOS 2025)': ['land', '◒'], 'Risques majeurs recensés': ['risks', '△'],
       'Artificialisation, eau et énergie': ['resources', '≈'], 'Politique de la ville': ['city', '◇']
     };
@@ -187,24 +188,17 @@
     }
     if (title === 'Logement') {
       const occupancy = section.querySelector('.donut-wrap');
-      if (occupancy) {
-        const shares = [...occupancy.querySelectorAll('.donut-legend-row')].map(row => ({
-          label: row.querySelector('span')?.textContent.trim() || '',
-          pct: row.querySelector('b')?.textContent.trim() || '',
-          color: row.querySelector('i')?.style.background || '#7b4ab5'
-        }));
-        occupancy.outerHTML = `<div class="occupancy-cards">${shares.map(item => `<div style="border-color:${item.color}"><b>${escapeHtml(item.pct)}</b><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
-      }
+      occupancy?.classList.add('housing-donut');
       const pctRows = [...section.querySelectorAll('.data-grid>div')].map(row => {
         const label = row.querySelector('dt')?.textContent.trim() || '';
         const value = row.querySelector('dd')?.textContent.trim() || '';
         const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         return { row, label, value: match ? Number(match[1].replace(',', '.')) : null };
-      }).filter(item => item.value != null);
+      }).filter(item => item.value != null && item.value > 0);
       if (pctRows.length) {
         pctRows.forEach(item => item.row.remove());
-        const dotplot = `<div class="housing-dotplot"><div class="dotplot-axis"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 %</span></div>${pctRows.map(item => `<div class="dotplot-row"><span>${escapeHtml(item.label)}</span><div><i style="left:${Math.max(1, Math.min(99, item.value))}%"></i></div><b>${item.value.toFixed(1)} %</b></div>`).join('')}</div>`;
-        section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', dotplot);
+        const radials = `<div class="housing-radials">${pctRows.map(item => `<div><i style="--pct:${Math.max(0, Math.min(100, item.value))}"><b>${item.value.toFixed(1)}%</b></i><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
+        section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', radials);
       }
     }
     return section;
@@ -377,7 +371,7 @@
       const negativeCount = (themeText.match(/\b(?:Non|Pas signée?)\b/gi) || []).length;
       const statusTotal = positiveCount + negativeCount;
       const normalizeLabel = label => label.replace(/princi\s+pales/gi, 'principales').replace(/^à l’EPCI\s*/i, '').replace(/\s{2,}/g, ' ').replace(/\.{3,}.*$/, '').trim();
-      const normalizeValue = value => value.replace(/\.{3,}.*$/, '').replace(/^\]x\[$/, 'Secret statistique').replace(/^#N\/D(?:\s*m²)?$/i, 'Non disponible').replace(/^n\.c\.?$/i, 'Non communiqué').trim();
+      const normalizeValue = value => value.replace(/\.{3,}.*$/, '').replace(/^\]x\[.*$/i, 'Secret statistique').replace(/^#N\/D(?:\s*m²)?$/i, 'Non disponible').replace(/^n\.c\.?$/i, 'Non communiqué').trim();
       const normalized = entries.map(entry => ({ label: normalizeLabel(entry.label), value: normalizeValue(entry.value) }));
       let meaningful = normalized.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value));
       const brokenValue = entry => /:\s|^\-\s+\p{L}{3}|Plan de prévention|Installation classée|Quartiers prioritaires de la politique/i.test(entry.value) || /\b(?:Basias|Monuments historiques|Natura 2000 ZSC)\b/i.test(entry.label) && entry.label.split(/\s+/).length > 7;
@@ -446,6 +440,11 @@
         available = [ppriPluvial && { label: 'PPRI pluvial', value: ppriPluvial }, ppriFluvial && { label: 'PPRI fluvial', value: ppriFluvial }, r111 && { label: 'Article R111.3', value: r111 }, basias && { label: 'Sites BASIAS', value: basias.value }].filter(Boolean);
         unavailable = unavailable.filter(entry => !brokenValue(entry));
       }
+      if (theme.title === 'Habitat logements') {
+        available = available.map(entry => /^% de propriétaires-ménages/i.test(entry.label) ? { ...entry, label: 'Ménages propriétaires' } : entry);
+        unavailable = [];
+      }
+      if (theme.title === 'Transports / déplacements et Aménagement') unavailable = [];
       if (!available.length && !unavailable.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
       return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
@@ -464,7 +463,7 @@
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
       ['Économie et emploi', ['Développement économique'], []],
       ['Planification et projets territoriaux', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
-      ['Mobilités et déplacements', ['Transports / déplacements et Aménagement'], []],
+      ['Mobilités et déplacements', ['Transports / déplacements et Aménagement'], ['Offre de mobilité']],
       ['Eau et transition énergétique', ['Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
       ['Patrimoine et environnement', ['Patrimoine écologique, paysager et bâtis protégés'], []],
       ['Risques et sécurité', ['Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés', 'Sécurité']]
