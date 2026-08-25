@@ -216,7 +216,7 @@
           pct: Number((row.querySelector('b')?.textContent || '').replace('%', '').replace(',', '.')) || 0,
           color: row.querySelector('i')?.style.background || '#16818a'
         }));
-        familyChart.outerHTML = `<div class="demography-chart family-chart"><h4>Structure des familles</h4>${families.map(item => `<div class="family-bar"><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%;background:${item.color}"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>`;
+        familyChart.outerHTML = `<div class="demography-chart family-chart"><h4>Structure des familles</h4>${families.map(item => `<div class="family-bar"><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>`;
       }
       section.querySelectorAll('.fiche-subhead').forEach(node => node.remove());
       section.querySelector('.data-grid')?.remove();
@@ -485,7 +485,7 @@
         unavailable = unavailable.filter(entry => !brokenValue(entry));
       }
       if (theme.title === 'Habitat logements') {
-        available = available.map(entry => /^% de propriétaires-ménages/i.test(entry.label) ? { ...entry, label: 'Ménages propriétaires' } : entry);
+        available = available.filter(entry => entry.value.trim() !== '0').map(entry => /^% de propriétaires-ménages/i.test(entry.label) ? { ...entry, label: 'Ménages propriétaires' } : entry);
         unavailable = [];
       }
       if (theme.title === 'Transports / déplacements et Aménagement') {

@@ -164,7 +164,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .family-chart{display:flex;flex-direction:column;gap:1.5mm}
 .family-bar{display:grid;grid-template-columns:34mm 1fr auto;align-items:center;gap:2mm;font-size:8pt}
 .family-bar i{height:2.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
-.family-bar em{display:block;height:100%;border-radius:2mm}
+.family-bar em{display:block;height:100%;border-radius:2mm;background:var(--t-dark,var(--ink))}
 .family-bar b{color:var(--ink);white-space:nowrap}
 
 .territory-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);margin-top:var(--s1)}
@@ -340,24 +340,10 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .octe-data-item>i{display:block;height:1.3mm;margin-top:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
 .octe-data-item>i span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
 
-/* Traitement « hero » : quand une thématique est seule sur sa page (peu
-   d'indicateurs), on remplit l'espace par de grandes tuiles plutôt que de
-   laisser une petite liste flotter dans le vide. */
-.data-body>*:only-child .octe-data-grid,.data-body>*:only-child>.data-grid{grid-template-columns:repeat(2,1fr);gap:var(--s3)}
-.data-body>*:only-child .octe-data-item{padding:var(--s4);border-left:0;border-radius:var(--radius);background:var(--t-soft,var(--paper))}
-.data-body>*:only-child .octe-data-item dt{font-size:10pt}
-.data-body>*:only-child .octe-data-item dd{font-size:24pt;margin-top:2.5mm}
-.data-body>*:only-child>.data-grid>div{padding:var(--s4);border-left:0;border-radius:var(--radius);background:var(--t-soft,var(--paper))}
-.data-body>*:only-child>.data-grid dt{font-size:10pt}
-.data-body>*:only-child>.data-grid dd{font-size:24pt;margin-top:2.5mm;color:var(--t-dark,var(--ink))}
-
-/* Thématique peu fournie (1 à 3 indicateurs) MAIS pas seule sur sa page :
-   elle reste compacte (ne s'étire pas en absorbant tout le vide) et laisse
-   le voisin plus riche occuper l'espace ; ses tuiles restent lisibles. */
+/* Une thématique peu fournie (1 à 3 indicateurs) qui partage sa page ne
+   s'étire pas en absorbant tout le vide : elle reste compacte, à sa taille
+   naturelle, et laisse le voisin plus riche occuper l'espace disponible. */
 .data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))){flex-grow:0}
-.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-grid{grid-template-columns:repeat(auto-fit,minmax(52mm,1fr))}
-.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-item{padding:var(--s3);background:var(--t-soft,var(--paper));border-left:0;border-radius:var(--radius)}
-.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-item dd{font-size:16pt}
 .octe-status{display:inline-block;padding:.8mm 2mm;border-radius:4mm;background:var(--good-soft);color:var(--good)!important;font-size:9pt}
 
 .octe-theme-focus .octe-data-grid{grid-template-columns:1fr}
