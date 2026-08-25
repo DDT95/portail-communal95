@@ -36,6 +36,9 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .octe-economy{--t:#b8780a;--t-dark:#7a4f06;--t-soft:#fbf1e0}
 .octe-mobility{--t:#1f5fa8;--t-dark:#123a6b;--t-soft:#e9f1fa}
 .octe-planning{--t:#a3396b;--t-dark:#6b2246;--t-soft:#f8ebf1}
+.octe-resources{--t:#128f77;--t-dark:#0b5c4c;--t-soft:#e6f6f2}
+.octe-city{--t:#a3396b;--t-dark:#6b2246;--t-soft:#f8ebf1}
+.octe-risks{--t:#c23a3a;--t-dark:#7d2323;--t-soft:#fbeaea}
 
 /* =====================================================================
    CARTE DDT (export A3) — inchangé dans son principe, jetons harmonisés.
@@ -318,15 +321,15 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
    ===================================================================== */
 .patrimony-viz{display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s3);min-height:72mm}
 .patrimony-viz.no-znieff .patrimony-identity.secondary{grid-row:1/-1;justify-content:center}
-.patrimony-identity{grid-row:1/-1;padding:var(--s3);border-radius:var(--radius);background:var(--t-dark);color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
+.patrimony-identity{grid-row:1/-1;padding:var(--s3);border-radius:var(--radius);background:var(--t-dark,var(--blue));color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
 .patrimony-identity span{font-size:8.5pt;opacity:.85}
 .patrimony-identity b{margin-top:2mm;font-size:17pt;line-height:1.12}
 .patrimony-identity small{margin-top:2mm;font-size:7pt;line-height:1.3;opacity:.85}
-.patrimony-identity.secondary{grid-column:3;grid-row:2;padding:var(--s2);background:var(--t-soft);color:var(--t-dark);border:.3mm solid var(--line)}
+.patrimony-identity.secondary{grid-column:3;grid-row:2;padding:var(--s2);background:var(--t-soft,var(--paper));color:var(--t-dark,var(--blue));border:.3mm solid var(--line)}
 .patrimony-identity.secondary span{font-size:7.5pt;opacity:1;color:var(--muted)}
 .patrimony-identity.secondary b{font-size:11.5pt;margin-top:1mm}
 .patrimony-ring{grid-row:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--s2);border-radius:var(--radius);background:#fff;border:.3mm solid var(--line);text-align:center}
-.patrimony-ring i{width:25mm;height:25mm;border-radius:50%;border:2.8mm solid var(--t);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:16pt;font-weight:700;color:var(--t-dark)}
+.patrimony-ring i{width:25mm;height:25mm;border-radius:50%;border:2.8mm solid var(--t,var(--blue));display:flex;align-items:center;justify-content:center;font-style:normal;font-size:16pt;font-weight:700;color:var(--t-dark,var(--blue))}
 .patrimony-ring span{margin-top:2.5mm;font-size:7.5pt;line-height:1.2;color:var(--muted)}
 .patrimony-ring.alt{grid-column:3;grid-row:1}
 .patrimony-ring.alt i{width:19mm;height:19mm;border-width:2.2mm;font-size:11pt}
