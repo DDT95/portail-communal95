@@ -153,6 +153,22 @@
     section.classList.add('viz-section', `viz-${theme}`);
     if (title === 'Offre de mobilité') {
       section.querySelectorAll('b,small').forEach(node => { node.textContent = node.textContent.replace(/\b(\d{2}):(\d{2})\b/g, (full, h, m) => { const hour = Number(h); return hour < 24 ? full : `${String(hour % 24).padStart(2, '0')}:${m} (J+${Math.floor(hour / 24)})`; }); });
+      section.querySelectorAll('.mobility-kpis span').forEach(node => {
+        node.textContent = node.textContent.replace('départs programmés par jour', 'passages programmés par jour');
+      });
+      const timelineCaption = section.querySelector('.service-timeline span');
+      if (timelineCaption) timelineCaption.textContent = 'Amplitude de service observée · du premier au dernier passage';
+      section.querySelectorAll('.mobility-lines>div').forEach(card => {
+        const line = card.querySelector(':scope>span');
+        if (line && !/^Ligne\s/i.test(line.textContent.trim())) line.textContent = `Ligne ${line.textContent.trim()}`;
+        const total = card.querySelector('section>b');
+        if (total) total.textContent = total.textContent.replace(/(\d+) départs? programmés?/i, (_, n) => `${n} passage${Number(n) > 1 ? 's' : ''} par jour`);
+        const detail = card.querySelector('section>small');
+        if (detail) detail.textContent = detail.textContent
+          .replace(/Intervalle moyen\s*:\s*(\d+)\s*min/i, 'En moyenne, un passage toutes les $1 min')
+          .replace(/Un seul départ recensé/i, 'Un passage quotidien recensé')
+          .replace(/\s*·\s*/, ' · service de ');
+      });
     }
     section.querySelectorAll('.data-grid>div').forEach((row, index) => {
       row.style.setProperty('--row-index', index);
@@ -217,6 +233,7 @@
         const arcs = shares.map(item => { const offset = -cumulative / 100 * circumference; cumulative += item.pct; return `<circle cx="50" cy="50" r="38" fill="none" stroke="${escapeHtml(item.color)}" stroke-width="14" stroke-dasharray="${item.pct / 100 * circumference} ${circumference}" stroke-dashoffset="${offset}"/>`; }).join('');
         occupancy.outerHTML = `<div class="housing-donut"><svg viewBox="0 0 100 100" role="img" aria-label="Répartition du statut d’occupation"><circle cx="50" cy="50" r="38" fill="none" stroke="#e5e7ee" stroke-width="14"/>${arcs}</svg><div class="donut-legend">${shares.map(item => `<div class="donut-legend-row"><i style="background:${item.color}"></i><span>${escapeHtml(item.label)}</span><b>${item.pct.toFixed(1)}%</b></div>`).join('')}</div></div>`;
       }
+      section.querySelectorAll('.fiche-subhead').forEach(node => node.remove());
       const allPctRows = [...section.querySelectorAll('.data-grid>div')].map(row => {
         const label = row.querySelector('dt')?.textContent.trim() || '';
         const value = row.querySelector('dd')?.textContent.trim() || '';
@@ -281,8 +298,13 @@
       const recenter = () => {
         map.invalidateSize({ animate: false });
         const compact = Boolean(host.closest('.summary-page'));
-        const padding = compact ? [16, 9] : [28, 22];
-        map.fitBounds(boundary.getBounds(), { paddingTopLeft: padding, paddingBottomRight: padding, maxZoom: 14, animate: false });
+        const padding = compact ? [12, 8] : [18, 14];
+        // Le cadre géographique est volontairement élargi avant fitBounds :
+        // le contour conserve ainsi une marge visible, même si le bloc change
+        // encore légèrement de taille pendant la composition A4.
+        const framedBounds = boundary.getBounds().pad(compact ? 0.32 : 0.24);
+        map.fitBounds(framedBounds, { paddingTopLeft: padding, paddingBottomRight: padding, maxZoom: compact ? 12 : 13, animate: false });
+        map.panTo(framedBounds.getCenter(), { animate: false });
       };
       recenter();
       const observer = new ResizeObserver(recenter);
@@ -517,8 +539,13 @@
         unavailable = [];
       }
       if (theme.title === 'Risques naturels et technologiques / Nuisances sonores') unavailable = [];
+      if (theme.title === 'Transition énergétique') {
+        available = available.filter(entry => !/^0(?:[,.]0+)?\s*(?:m|km|ha|%)?$/i.test(entry.value.trim()));
+      }
       unavailable = [];
-      if (!available.length && !statuses.length && statusTotal < 2) return '';
+      // Ne jamais imprimer un simple en-tête vide : si l'extraction n'a pas
+      // produit d'indicateur exploitable, le bloc est omis de la fiche.
+      if (!available.length && !statuses.length && !thematicViz) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
       const themeClass = theme.title === 'Habitat logements' ? ' octe-housing' : theme.title === 'Développement économique' ? ' octe-economy' : theme.title === 'Transports / déplacements et Aménagement' ? ' octe-mobility' : theme.title === 'Démarches territoriales' ? ' octe-planning' : '';
       return `<section class="octe-theme${themeClass}${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
@@ -531,15 +558,14 @@
     const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
     const integratedGroups = [
-      ['Repères territoriaux et gouvernance', ['Données générales'], ['Chiffres clés', 'Élus et gouvernance']],
+      ['Repères territoriaux et gouvernance', [], ['Chiffres clés', 'Élus et gouvernance']],
       ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
       ['Habitat et logement', ['Habitat logements'], ['Logement']],
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
       ['Économie et emploi', ['Développement économique'], ['Économie locale']],
-      ['Planification et projets territoriaux', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
+      ['Planification et projets territoriaux', ['Données générales', 'Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
       ['Mobilités et déplacements', ['Transports / déplacements et Aménagement'], ['Offre de mobilité']],
-      ['Eau et transition énergétique', ['Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
-      ['Patrimoine et environnement', ['Patrimoine écologique, paysager et bâtis protégés'], []],
+      ['Environnement, patrimoine et transitions', ['Gestion de l’eau', 'Transition énergétique', 'Patrimoine écologique, paysager et bâtis protégés'], ['Artificialisation, eau et énergie']],
       ['Risques et sécurité', ['Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés', 'Sécurité']]
     ];
     const pages = integratedGroups.map(([title, octeNames, enrichedNames], index) => ({ title, html: `${warning}${index === 0 ? `${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` : `${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}`}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
