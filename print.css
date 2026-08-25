@@ -249,12 +249,12 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-body .source-note{font-size:7pt;line-height:1.35;margin-top:var(--s2)}
 
 /* Première page : carte 16:9, centrée, puis repères dans une vraie grille */
-.data-body .viz-key{grid-template-columns:78mm minmax(0,1fr);grid-template-rows:auto 50mm;gap:var(--s2) var(--s3);align-items:stretch;overflow:hidden}
+.data-body .viz-key{grid-template-columns:78mm minmax(0,1fr);grid-template-rows:auto minmax(58mm,auto);gap:var(--s2) var(--s3);align-items:stretch;overflow:visible}
 .commune-map-card{padding:0;background:#e4e6e9;border:.25mm solid #b9bec7;border-radius:2mm}
 .commune-mini-map{height:100%;min-height:0;border:0;border-radius:1.7mm;background:#dedfe2}
 .commune-mini-map .leaflet-container{background:#dedfe2}
 .data-body .viz-key .data-grid{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s2);min-height:0}
-.data-body .viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;padding:var(--s2);border:0;border-left:1mm solid #000091;border-radius:0;background:#f4f5fb}
+.data-body .viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:27mm;padding:var(--s2);border:0;border-left:1mm solid #000091;border-radius:0;background:#f4f5fb}
 .data-body .viz-key .data-grid dt{font-size:8pt;line-height:1.2;color:#52566a}
 .data-body .viz-key .data-grid dd{font-size:11pt;line-height:1.18;margin-top:1.5mm;color:#000091}
 
@@ -299,7 +299,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-grid .viz-key{grid-template-columns:1fr;grid-template-rows:auto 29mm auto;gap:2mm;align-content:start;overflow:visible}
 .summary-grid .viz-key>h3{grid-column:1;grid-row:1}.summary-grid .viz-key>.commune-map-card{grid-column:1;grid-row:2}.summary-grid .viz-key>.data-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;gap:1.2mm}
 .summary-grid .commune-mini-map{height:29mm;min-height:29mm}
-.summary-grid .viz-key .data-grid>div{padding:1.4mm;border-left:.6mm solid #000091}.summary-grid .viz-key .data-grid dt{font-size:4.8pt}.summary-grid .viz-key .data-grid dd{font-size:6.8pt;line-height:1.15;overflow-wrap:normal;white-space:normal}
+.summary-grid .viz-key .data-grid>div{min-height:0;padding:1.4mm;border-left:.6mm solid #000091}.summary-grid .viz-key .data-grid dt{font-size:4.8pt}.summary-grid .viz-key .data-grid dd{font-size:6.8pt;line-height:1.15;overflow-wrap:normal;white-space:normal}
 .summary-grid .demography-kpis{grid-template-columns:repeat(3,1fr);gap:1.5mm;margin-bottom:2mm}
 .summary-grid .demography-kpis>div{min-height:15mm;padding:1.8mm}
 .summary-grid .demography-kpis span{font-size:5.3pt}.summary-grid .demography-kpis b{font-size:7.3pt}.summary-grid .demography-kpis .is-primary b{font-size:9pt}
