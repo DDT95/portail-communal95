@@ -151,6 +151,9 @@
     const [theme] = themes[title] || ['default'];
     section.dataset.sectionTitle = title;
     section.classList.add('viz-section', `viz-${theme}`);
+    if (title === 'Offre de mobilité') {
+      section.querySelectorAll('b,small').forEach(node => { node.textContent = node.textContent.replace(/\b(\d{2}):(\d{2})\b/g, (full, h, m) => { const hour = Number(h); return hour < 24 ? full : `${String(hour % 24).padStart(2, '0')}:${m} (J+${Math.floor(hour / 24)})`; }); });
+    }
     section.querySelectorAll('.data-grid>div').forEach((row, index) => {
       row.style.setProperty('--row-index', index);
       const value = row.querySelector('dd')?.textContent || '';
@@ -482,14 +485,15 @@
         unavailable = [];
       }
       if (theme.title === 'Risques naturels et technologiques / Nuisances sonores') unavailable = [];
-      if (!available.length && !unavailable.length && !statuses.length && statusTotal < 2) return '';
+      unavailable = [];
+      if (!available.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
       return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
         const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
         const context = contextFor(entry.label);
         return `<div class="octe-data-item"><dt>${escapeHtml(entry.label)}</dt><dd${status ? ' class="octe-status"' : ''}>${escapeHtml(entry.value)}</dd>${context ? `<p>${escapeHtml(context)}</p>` : ''}${pct ? `<i aria-hidden="true"><span style="width:${Math.min(100, Number(pct[1].replace(',', '.')))}%"></span></i>` : ''}</div>`;
-      }).join('')}</div>${unavailable.length ? `<div class="octe-unavailable"><b>Données non renseignées ou protégées</b><span>${unavailable.map(entry => escapeHtml(entry.label)).join(' · ')}</span></div>` : ''}</section>`;
+      }).join('')}</div></section>`;
     };
     const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
