@@ -84,19 +84,19 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-page{width:210mm;height:297mm;margin:12mm auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:10mm 13mm;overflow:hidden;display:flex;flex-direction:column}
 .data-page-head{display:flex;align-items:stretch;gap:4mm;margin-bottom:var(--s4);flex:none}
 .data-page-head img{width:22mm;height:auto;align-self:center}
-.data-page-head>div{flex:1;padding:4mm 5mm;background:var(--blue);color:#fff;min-width:0}
-.data-page-head span{display:block;font-size:8pt;font-weight:700;letter-spacing:.06em;color:#aab6e8}
+.data-page-head>div{flex:1;padding:4mm 5mm;background:var(--t-dark,var(--blue));color:#fff;min-width:0}
+.data-page-head span{display:block;font-size:8pt;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.68)}
 .data-page-head strong{display:block;font-size:19pt;line-height:1.15;margin-top:1.3mm;color:#fff;font-weight:700}
 .data-page-head em{display:block;font-style:normal;font-size:9.5pt;font-weight:700;margin-top:1mm;color:#fff;opacity:.92}
 
-.data-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--s3)}
+.data-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--s3);overflow:hidden}
 /* Chaque page contient 1 à 3 blocs : ils se répartissent la hauteur
    disponible à parts égales, pour ne jamais laisser un grand vide en bas. */
 /* Chaque bloc garde sa hauteur naturelle (jamais de contenu comprimé ou
    coupé) ; s'il est seul sur la page, il s'étire pour l'occuper pleinement. */
 /* grow (1) pour occuper le vide s'il y en a, shrink (0) jamais : un contenu
    dense garde sa taille naturelle plutôt que d'être comprimé ou coupé. */
-.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center}
+.data-body>.result-section,.data-body>.viz-section,.data-body>.octe-theme{flex:1 0 auto;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
 .data-body>*:only-child{flex:1}
 .data-body{justify-content:flex-start}
 
@@ -339,6 +339,25 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .octe-data-item p{margin:1.2mm 0 0;font-size:7.5pt;line-height:1.3;color:var(--muted)}
 .octe-data-item>i{display:block;height:1.3mm;margin-top:1.4mm;border-radius:2mm;background:var(--line-soft);overflow:hidden}
 .octe-data-item>i span{display:block;height:100%;border-radius:2mm;background:var(--t,var(--blue))}
+
+/* Traitement « hero » : quand une thématique est seule sur sa page (peu
+   d'indicateurs), on remplit l'espace par de grandes tuiles plutôt que de
+   laisser une petite liste flotter dans le vide. */
+.data-body>*:only-child .octe-data-grid,.data-body>*:only-child>.data-grid{grid-template-columns:repeat(2,1fr);gap:var(--s3)}
+.data-body>*:only-child .octe-data-item{padding:var(--s4);border-left:0;border-radius:var(--radius);background:var(--t-soft,var(--paper))}
+.data-body>*:only-child .octe-data-item dt{font-size:10pt}
+.data-body>*:only-child .octe-data-item dd{font-size:24pt;margin-top:2.5mm}
+.data-body>*:only-child>.data-grid>div{padding:var(--s4);border-left:0;border-radius:var(--radius);background:var(--t-soft,var(--paper))}
+.data-body>*:only-child>.data-grid dt{font-size:10pt}
+.data-body>*:only-child>.data-grid dd{font-size:24pt;margin-top:2.5mm;color:var(--t-dark,var(--ink))}
+
+/* Thématique peu fournie (1 à 3 indicateurs) MAIS pas seule sur sa page :
+   elle reste compacte (ne s'étire pas en absorbant tout le vide) et laisse
+   le voisin plus riche occuper l'espace ; ses tuiles restent lisibles. */
+.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))){flex-grow:0}
+.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-grid{grid-template-columns:repeat(auto-fit,minmax(52mm,1fr))}
+.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-item{padding:var(--s3);background:var(--t-soft,var(--paper));border-left:0;border-radius:var(--radius)}
+.data-body>.octe-theme:not(:only-child):has(.octe-data-grid):not(:has(.octe-data-item:nth-child(4))) .octe-data-item dd{font-size:16pt}
 .octe-status{display:inline-block;padding:.8mm 2mm;border-radius:4mm;background:var(--good-soft);color:var(--good)!important;font-size:9pt}
 
 .octe-theme-focus .octe-data-grid{grid-template-columns:1fr}
@@ -377,7 +396,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-governance span{font-size:6pt;color:var(--muted);text-transform:uppercase}
 .summary-governance b{margin:0;font-size:7pt;color:var(--ink)}
 
-.summary-dashboard{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "economy economy";gap:var(--s2);align-items:stretch;min-height:0;overflow:hidden}
+.summary-dashboard{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"key demo" "housing land" "economy economy";gap:var(--s2);align-items:stretch;min-height:0;overflow:hidden;flex:0 0 auto}
 .summary-dashboard>[data-section-title="Chiffres clés"]{grid-area:key}
 .summary-dashboard>[data-section-title="Population et dynamiques sociales"],.summary-dashboard>[data-section-title="Démographie, revenus et emploi"]{grid-area:demo}
 .summary-dashboard>[data-section-title="Logement"]{grid-area:housing}
@@ -410,7 +429,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .age-stack{height:4.5mm}
 .summary-page .age-labels{gap:1mm;margin-top:1mm}
 .summary-page .age-labels>div{font-size:6pt}
-.summary-page .family-chart,.summary-page .territory-profile-grid{display:none}
+.summary-page .family-chart{display:none}
 
 .summary-page .land-overview{grid-template-columns:26mm 1fr;gap:var(--s2)}
 .summary-page .land-total{height:26mm}
@@ -435,26 +454,18 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-page .economy-context span{font-size:5.6pt}
 .summary-page .economy-context b{font-size:7.5pt}
 
-/* Lecture territoriale : un en-tête + deux colonnes (leviers / vigilances),
-   chaque repère en "métrique + explication" — mêmes jetons que le reste. */
-.territorial-reading{margin-top:var(--s2);padding:var(--s2) var(--s3);border:.25mm solid var(--line);border-radius:var(--radius);background:var(--paper)}
-.territorial-reading>header{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s1);padding-bottom:var(--s1);border-bottom:.2mm solid var(--line)}
-.territorial-reading h2{margin:0;color:var(--blue);font-size:9pt;font-weight:700;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
-.territorial-reading>header p{margin:0;color:var(--muted);font-size:6.8pt;line-height:1.3}
-.territorial-reading>div{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
-.territorial-reading article{padding:var(--s1) var(--s2);border-top:1mm solid var(--good);border-radius:0 0 1.5mm 1.5mm;background:#fff}
-.territorial-reading article+article{border-top-color:var(--warn)}
-.territorial-reading h3{margin:0 0 1mm;font-size:8pt;color:var(--ink)}
-.territorial-reading article p{display:grid;grid-template-columns:16mm minmax(0,1fr);gap:var(--s1);align-items:baseline;margin:0;padding:1mm 0;border-top:.15mm solid var(--line-soft);font-size:7pt;line-height:1.3;color:var(--muted)}
-.territorial-reading article h3+p{border-top:0}
-.territorial-reading article strong{color:var(--good);font-size:8pt;font-weight:700;line-height:1.15}
-.territorial-reading article+article strong{color:var(--warn)}
-.territorial-reading article span{min-width:0}
-
-/* Conclusion compacte dans le flux normal : seule la zone basse est corrigée. */
-.summary-page .territorial-reading{box-sizing:border-box;height:36mm;margin-top:2mm;padding:2mm 3mm;overflow:hidden;flex:none}
-.summary-page .territorial-reading>header{margin-bottom:1mm;padding-bottom:.8mm}
-.summary-page .territorial-reading article{min-height:26mm;padding:1.2mm 2mm}
+/* Profil territorial (synthèse) : les mêmes rubans éducation / CSP /
+   déplacements que la fiche complète, en pleine largeur — données brutes,
+   pas de commentaire interprétatif. Coloré comme la démographie dont il
+   est extrait. */
+.profile-panel{--t:#d1531f;--t-dark:#9c3c14;--t-soft:#fdeee7;margin-top:var(--s2)}
+.summary-page .profile-panel{padding:var(--s2) var(--s3)}
+.summary-page .profile-panel h3{font-size:10pt}
+.summary-page .profile-panel .territory-profile-grid{margin-top:var(--s1)}
+.summary-page .profile-panel .territory-profile{padding:var(--s1) var(--s2)}
+.summary-page .profile-panel .territory-profile h4{font-size:6.8pt}
+.summary-page .profile-panel .territory-profile>div{font-size:6.5pt;margin:.7mm 0}
+.summary-page .profile-panel .territory-profile b{font-size:6.5pt}
 
 /* Mobilités : grille compacte pour préserver l'offre détaillée et le folio.
    Ciblé par thème (jamais par numéro de page, qui varie selon la commune). */
