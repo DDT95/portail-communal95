@@ -173,6 +173,17 @@
         section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="land-overview">${surface ? `<div class="land-total"><b>${escapeHtml(surface.value)}</b><span>surface communale</span></div>` : ''}<div class="land-composition"><div class="land-band">${parts.map((row, i) => `<i style="width:${row.pct}%;background:${colors[i % colors.length]}"></i>`).join('')}</div><div class="land-legend">${parts.map((row, i) => `<div><i style="background:${colors[i % colors.length]}"></i><span>${escapeHtml(row.label)}</span><b>${row.pct.toFixed(1)} %</b><small>${escapeHtml(row.value.replace(/\s*[·-]\s*\d+(?:[.,]\d+)?\s*%/, ''))}</small></div>`).join('')}</div></div></div>`);
       }
     }
+    if (title === 'Démographie, revenus et emploi') {
+      const ageChart = section.querySelector('.donut-wrap');
+      if (ageChart) {
+        const ages = [...ageChart.querySelectorAll('.donut-legend-row')].map(row => ({
+          label: row.querySelector('span')?.textContent.trim() || '',
+          pct: Number((row.querySelector('b')?.textContent || '').replace('%', '').replace(',', '.')) || 0,
+          color: row.querySelector('i')?.style.background || '#d0702f'
+        }));
+        ageChart.outerHTML = `<div class="age-structure"><div class="age-stack">${ages.map(age => `<i style="width:${age.pct}%;background:${age.color}"></i>`).join('')}</div><div class="age-labels">${ages.map(age => `<div><i style="background:${age.color}"></i><span>${escapeHtml(age.label)}</span><b>${age.pct.toFixed(1)} %</b></div>`).join('')}</div></div>`;
+      }
+    }
     return section;
   }
 
@@ -193,7 +204,7 @@
   }
 
   function miniMapHtml() {
-    return `<figure class="commune-map-card"><div class="commune-mini-map" aria-label="Emprise cartographique de ${escapeHtml(state.nom)}"></div><figcaption><b>Emprise communale</b><span>Fond cartographique gris · © OpenStreetMap</span></figcaption></figure>`;
+    return `<figure class="commune-map-card"><div class="commune-mini-map" aria-label="Carte de ${escapeHtml(state.nom)} sur fond OpenStreetMap"></div></figure>`;
   }
 
   async function initMiniMaps() {
@@ -275,12 +286,6 @@
     let warning = '';
     try { themes = await readOcteThemes(); } catch (error) { console.warn(error); warning = '<p class="data-warning">La source OCTE n’a pas pu être relue. Les données du portail restent présentes ci-dessous.</p>'; }
     const portal = portalSections();
-    const completePct = (sectionTitle, label) => {
-      const section = portal.find(s => s.dataset.sectionTitle === sectionTitle);
-      const row = section ? [...section.querySelectorAll('.data-grid>div')].find(r => r.querySelector('dt')?.textContent.includes(label)) : null;
-      const match = row?.querySelector('dd')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
-      return match ? Number(match[1].replace(',', '.')) : null;
-    };
     const completeKey = portal.find(s => s.dataset.sectionTitle === 'Chiffres clés');
     if (completeKey && !completeKey.querySelector('.commune-map-card')) completeKey.insertAdjacentHTML('afterbegin', miniMapHtml());
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
@@ -348,28 +353,36 @@
       const positiveCount = (themeText.match(/\b(?:Oui|Approuvé|Signée?)\b/gi) || []).length;
       const negativeCount = (themeText.match(/\b(?:Non|Pas signée?)\b/gi) || []).length;
       const statusTotal = positiveCount + negativeCount;
-      const meaningful = entries.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^[#]+$/.test(entry.value) && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value.trim()));
+      const normalizeLabel = label => label.replace(/princi\s+pales/gi, 'principales').replace(/^à l’EPCI\s*/i, '').replace(/\s{2,}/g, ' ').replace(/\.{3,}.*$/, '').trim();
+      const normalizeValue = value => value.replace(/\.{3,}.*$/, '').replace(/^\]x\[$/, 'Secret statistique').replace(/^#N\/D(?:\s*m²)?$/i, 'Non disponible').replace(/^n\.c\.?$/i, 'Non communiqué').trim();
+      const normalized = entries.map(entry => ({ label: normalizeLabel(entry.label), value: normalizeValue(entry.value) }));
+      const meaningful = normalized.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value));
+      const unavailable = meaningful.filter(entry => /^(Non disponible|Non communiqué|Secret statistique|-)$/i.test(entry.value));
+      const available = meaningful.filter(entry => !unavailable.includes(entry));
       if (!meaningful.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
-      return `<section class="octe-theme${meaningful.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>DONNÉES OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${meaningful.map(entry => {
+      return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}<div class="octe-data-grid">${available.map(entry => {
         const pct = entry.value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         const status = /^(oui|non|approuvé|signée?|carencée?)$/i.test(entry.value.trim());
         const context = contextFor(entry.label);
         return `<div class="octe-data-item"><dt>${escapeHtml(entry.label)}</dt><dd${status ? ' class="octe-status"' : ''}>${escapeHtml(entry.value)}</dd>${context ? `<p>${escapeHtml(context)}</p>` : ''}${pct ? `<i aria-hidden="true"><span style="width:${Math.min(100, Number(pct[1].replace(',', '.')))}%"></span></i>` : ''}</div>`;
-      }).join('')}</div></section>`;
+      }).join('')}</div>${unavailable.length ? `<div class="octe-unavailable"><b>Données non renseignées ou protégées</b><span>${unavailable.map(entry => escapeHtml(entry.label)).join(' · ')}</span></div>` : ''}</section>`;
     };
     const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(octeThemeHtml).join('');
     const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
     const integratedGroups = [
       ['Repères territoriaux et gouvernance', ['Données générales'], ['Chiffres clés', 'Élus et gouvernance']],
-      ['Population, revenus et emploi', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
-      ['Habitat et statuts d’occupation', ['Habitat logements'], ['Logement']],
-      ['Foncier, économie et occupation du sol', ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
-      ['Planification, démarches et sécurité', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville', 'Sécurité']],
-      ['Mobilités, eau et transition énergétique', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
-      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés']]
+      ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
+      ['Habitat et logement', ['Habitat logements'], ['Logement']],
+      ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
+      ['Économie et emploi', ['Développement économique'], []],
+      ['Planification et projets territoriaux', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
+      ['Mobilités et déplacements', ['Transports / déplacements et Aménagement'], []],
+      ['Eau et transition énergétique', ['Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
+      ['Patrimoine et environnement', ['Patrimoine écologique, paysager et bâtis protégés'], []],
+      ['Risques et sécurité', ['Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés', 'Sécurité']]
     ];
-    const pages = integratedGroups.map(([title, octeNames, enrichedNames]) => ({ title, html: `${warning}${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
+    const pages = integratedGroups.map(([title, octeNames, enrichedNames], index) => ({ title, html: `${warning}${index === 0 ? `${enrichedHtml(enrichedNames)}${officialHtml(octeNames)}` : `${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}`}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
   }
 
