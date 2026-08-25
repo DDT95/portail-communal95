@@ -529,6 +529,7 @@ function renderFicheDrawer(open) {
   const e = state.elus;
   const elusRows = e ? [
     ['Maire', e.maire ? `${e.maire.prenom} ${e.maire.nom}` : null],
+    ['Début de mandat', e.maire?.debut_mandat ? new Date(e.maire.debut_mandat).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null],
     ['Canton', e.canton?.nom],
     ['Conseillers départementaux', e.canton?.conseillers?.length ? e.canton.conseillers.map(c => `${c.prenom} ${c.nom}`).join(' · ') : null],
     [`Député${e.circonscription?.label ? ' (' + e.circonscription.label + ')' : ''}`, e.circonscription?.depute ? `${e.circonscription.depute.prenom} ${e.circonscription.depute.nom}` : null],
