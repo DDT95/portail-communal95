@@ -451,6 +451,20 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .territorial-reading article+article strong{color:var(--warn)}
 .territorial-reading article span{min-width:0}
 
+/* La conclusion occupe une zone fixe réservée, au-dessus du folio. */
+.summary-page{position:relative}
+.summary-page .data-body{padding-bottom:39mm}
+.summary-page .data-foot{position:absolute;left:10mm;right:10mm;bottom:6mm;margin:0}
+.summary-page .territorial-reading{position:absolute;left:10mm;right:10mm;bottom:12mm;height:30mm;margin:0;padding:2mm 3mm;overflow:hidden}
+.summary-page .territorial-reading>header{margin-bottom:1mm;padding-bottom:.8mm}
+.summary-page .territorial-reading article{min-height:20.5mm;padding:1.2mm 2mm}
+
+/* Mobilités : grille compacte pour préserver l'offre détaillée et le folio. */
+#dataPage-6 .octe-data-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm}
+#dataPage-6 .octe-data-item{min-height:0;padding:2.2mm 2.5mm}
+#dataPage-6 .octe-data-item dt{font-size:7.5pt}
+#dataPage-6 .octe-data-item dd{font-size:9pt;line-height:1.2}
+
 /* =====================================================================
    IMPRESSION
    ===================================================================== */
