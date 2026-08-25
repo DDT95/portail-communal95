@@ -143,6 +143,7 @@
     const themes = {
       'Chiffres clés': ['key', '◆'], 'Élus et gouvernance': ['governance', '◎'], 'Sécurité': ['security', '◈'],
       'Démographie, revenus et emploi': ['demography', '●'], 'Logement': ['housing', '⌂'],
+      'Économie locale': ['economy', '◉'],
       'Offre de mobilité': ['mobility', '↔'],
       'Occupation du sol (MOS 2025)': ['land', '◒'], 'Risques majeurs recensés': ['risks', '△'],
       'Artificialisation, eau et énergie': ['resources', '≈'], 'Politique de la ville': ['city', '◇']
@@ -188,18 +189,33 @@
     }
     if (title === 'Logement') {
       const occupancy = section.querySelector('.donut-wrap');
-      occupancy?.classList.add('housing-donut');
-      const pctRows = [...section.querySelectorAll('.data-grid>div')].map(row => {
+      if (occupancy) {
+        const shares = [...occupancy.querySelectorAll('.donut-legend-row')].map(row => ({ label: row.querySelector('span')?.textContent.trim() || '', pct: Number((row.querySelector('b')?.textContent || '').replace('%', '').replace(',', '.')) || 0, color: row.querySelector('i')?.style.background || '#7b4ab5' }));
+        const circumference = 238.76;
+        let cumulative = 0;
+        const arcs = shares.map(item => { const offset = -cumulative / 100 * circumference; cumulative += item.pct; return `<circle cx="50" cy="50" r="38" fill="none" stroke="${escapeHtml(item.color)}" stroke-width="14" stroke-dasharray="${item.pct / 100 * circumference} ${circumference}" stroke-dashoffset="${offset}"/>`; }).join('');
+        occupancy.outerHTML = `<div class="housing-donut"><svg viewBox="0 0 100 100" role="img" aria-label="Répartition du statut d’occupation"><circle cx="50" cy="50" r="38" fill="none" stroke="#e5e7ee" stroke-width="14"/>${arcs}</svg><div class="donut-legend">${shares.map(item => `<div class="donut-legend-row"><i style="background:${item.color}"></i><span>${escapeHtml(item.label)}</span><b>${item.pct.toFixed(1)}%</b></div>`).join('')}</div></div>`;
+      }
+      const allPctRows = [...section.querySelectorAll('.data-grid>div')].map(row => {
         const label = row.querySelector('dt')?.textContent.trim() || '';
         const value = row.querySelector('dd')?.textContent.trim() || '';
         const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
         return { row, label, value: match ? Number(match[1].replace(',', '.')) : null };
-      }).filter(item => item.value != null && item.value > 0);
+      }).filter(item => item.value != null);
+      allPctRows.forEach(item => item.row.remove());
+      const pctRows = allPctRows.filter(item => item.value > 0);
       if (pctRows.length) {
-        pctRows.forEach(item => item.row.remove());
-        const radials = `<div class="housing-radials">${pctRows.map(item => `<div><i style="--pct:${Math.max(0, Math.min(100, item.value))}"><b>${item.value.toFixed(1)}%</b></i><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
+        const radialCirc = 201.06;
+        const radials = `<div class="housing-radials">${pctRows.map(item => `<div><svg viewBox="0 0 100 100" role="img" aria-label="${escapeHtml(item.label)} : ${item.value.toFixed(1)} %"><circle cx="50" cy="50" r="32" fill="none" stroke="#e4e0eb" stroke-width="11"/><circle cx="50" cy="50" r="32" fill="none" stroke="#7b4ab5" stroke-width="11" stroke-linecap="round" stroke-dasharray="${item.value / 100 * radialCirc} ${radialCirc}" transform="rotate(-90 50 50)"/><text x="50" y="55" text-anchor="middle">${item.value.toFixed(1)}%</text></svg><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>`;
         section.querySelector('.source-note')?.insertAdjacentHTML('beforebegin', radials);
       }
+    }
+    if (title === 'Économie locale') {
+      const rows = [...section.querySelectorAll('.data-grid>div')].map(row => ({ label: row.querySelector('dt')?.textContent.trim() || '', value: row.querySelector('dd')?.textContent.trim() || '' }));
+      const headline = rows.filter(row => /Établissements|Emplois salariés/i.test(row.label));
+      const context = rows.filter(row => !headline.includes(row));
+      section.querySelector('.data-grid')?.remove();
+      section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="economy-viz"><div class="economy-headlines">${headline.map((row, i) => `<div><i>${i === 0 ? 'ÉTABLISSEMENTS' : 'EMPLOIS'}</i><b>${escapeHtml(row.value)}</b><span>${escapeHtml(row.label)}</span></div>`).join('')}</div><div class="economy-context">${context.map(row => `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}</div></div>`);
     }
     return section;
   }
@@ -375,7 +391,7 @@
       const normalized = entries.map(entry => ({ label: normalizeLabel(entry.label), value: normalizeValue(entry.value) }));
       let meaningful = normalized.filter(entry => entry.label && entry.label.length > 2 && entry.value && !/^(Oui|Non|Approuvé|Pas signée?|Carencée?)$/i.test(entry.value));
       const brokenValue = entry => /:\s|^\-\s+\p{L}{3}|Plan de prévention|Installation classée|Quartiers prioritaires de la politique/i.test(entry.value) || /\b(?:Basias|Monuments historiques|Natura 2000 ZSC)\b/i.test(entry.label) && entry.label.split(/\s+/).length > 7;
-      let unavailable = meaningful.filter(entry => /^(Non disponible|Non communiqué|Secret statistique|-)$/i.test(entry.value) || brokenValue(entry));
+      let unavailable = meaningful.filter(entry => /^(Non disponible|Non communiqué|Non renseigné|Secret statistique|-)$/i.test(entry.value) || brokenValue(entry));
       let available = meaningful.filter(entry => !unavailable.includes(entry));
       let thematicViz = '';
       const extractLeaderValue = (label, values) => {
@@ -421,15 +437,17 @@
           pick('Règlement local de publicité', /Règlement local de publicité/i, /^(?:RNP|1G|2G)$/i)
         ].filter(Boolean);
         const zsc = themeText.match(/Natura 2000 ZSC[^:]{0,100}:\s*(?:\.*\s*)?(oui|non|-)/i)?.[1];
-        statuses = statusItems.filter(item => /Natura 2000 ZSC|Espace naturel sensible \(ENS\)/i.test(item.label)).map(item => ({ label: item.label.match(/Natura 2000 ZSC/i) ? 'Natura 2000 — ZSC' : 'Espace naturel sensible (ENS)', value: item.value }));
-        if (zsc && !statuses.some(item => /ZSC/i.test(item.label))) statuses.push({ label: 'Natura 2000 — ZSC', value: zsc });
+        statuses = statusItems.filter(item => !/^-$/.test(item.value) && /Natura 2000 ZSC|Espace naturel sensible \(ENS\)/i.test(item.label)).map(item => ({ label: item.label.match(/Natura 2000 ZSC/i) ? 'Natura 2000 — ZSC' : 'Espace naturel sensible (ENS)', value: item.value }));
+        if (zsc && !/^-$/.test(zsc) && !statuses.some(item => /ZSC/i.test(item.label))) statuses.push({ label: 'Natura 2000 — ZSC', value: zsc });
         unavailable = normalized.filter(item => /^-$/.test(item.value) && /Natura 2000 ZPS|Réserve naturelle|Sites patrimoniaux|biotope|Sites classés|Sites inscrits|ZICO/i.test(item.label));
         const pnr = available.find(item => /Parc naturel/i.test(item.label))?.value || '—';
         const znieff = available.find(item => /ZNIEFF/i.test(item.label))?.value || '—';
         const monuments = available.find(item => /Monuments/i.test(item.label))?.value || '—';
         const rlp = available.find(item => /publicité/i.test(item.label))?.value || '—';
-        thematicViz = `<div class="patrimony-viz"><div class="patrimony-identity"><span>Parc naturel régional</span><b>${escapeHtml(pnr)}</b></div><div class="patrimony-ring"><i>${escapeHtml(monuments)}</i><span>monuments historiques</span></div><div class="patrimony-ring alt"><i>${escapeHtml(znieff)}</i><span>types de ZNIEFF recensés</span></div><div class="patrimony-identity secondary"><span>Publicité extérieure</span><b>${escapeHtml(rlp)}</b></div></div>`;
+        const hasZnieff = znieff !== '—';
+        thematicViz = `<div class="patrimony-viz${hasZnieff ? '' : ' no-znieff'}"><div class="patrimony-identity"><span>Territoire du parc naturel régional</span><b>${escapeHtml(pnr)}</b><small>Cadre paysager et patrimonial de référence</small></div><div class="patrimony-ring"><i>${escapeHtml(monuments)}</i><span>monuments historiques protégés</span></div>${hasZnieff ? `<div class="patrimony-ring alt"><i>${escapeHtml(znieff)}</i><span>catégorie(s) ZNIEFF présente(s)</span></div>` : ''}<div class="patrimony-identity secondary"><span>Régime de publicité extérieure</span><b>${escapeHtml(rlp)}</b><small>Règlement national applicable</small></div></div>`;
         available = [];
+        unavailable = [];
       }
       if (theme.title === 'Risques naturels et technologiques / Nuisances sonores') {
         const riskValue = (label, pattern) => themeText.match(new RegExp(pattern + '[\\s\\S]{0,90}?(\\d{2}\\/\\d{2}\\/\\d{4})', 'i'))?.[1];
@@ -444,7 +462,15 @@
         available = available.map(entry => /^% de propriétaires-ménages/i.test(entry.label) ? { ...entry, label: 'Ménages propriétaires' } : entry);
         unavailable = [];
       }
-      if (theme.title === 'Transports / déplacements et Aménagement') unavailable = [];
+      if (theme.title === 'Transports / déplacements et Aménagement') {
+        available = available.map(entry => /Taux de motorisation/i.test(entry.label) ? { ...entry, label: 'Motorisation des ménages', value: `${entry.value} véhicule(s) par ménage` } : entry);
+        unavailable = [];
+      }
+      if (theme.title === 'Développement économique') {
+        available = available.filter(entry => !/^Non renseigné$/i.test(entry.value)).map(entry => /^Taux/i.test(entry.label) && /^\d+(?:[.,]\d+)?$/.test(entry.value) ? { ...entry, value: `${entry.value} %` } : entry);
+        unavailable = [];
+      }
+      if (theme.title === 'Risques naturels et technologiques / Nuisances sonores') unavailable = [];
       if (!available.length && !unavailable.length && !statuses.length && statusTotal < 2) return '';
       const contextFor = label => /SRHH/i.test(label) ? 'Objectif territorial de production de logements fixé par le schéma régional de l’habitat et de l’hébergement.' : /PLH/i.test(label) ? 'Cadre intercommunal de programmation de l’habitat.' : /SCoT/i.test(label) ? 'Document stratégique de planification à l’échelle intercommunale.' : '';
       return `<section class="octe-theme${available.length === 1 && !statuses.length ? ' octe-theme-focus' : ''}"><div class="octe-theme-head"><h2>${escapeHtml(theme.title)}</h2><span>OCTE · DDT 95</span></div>${statusTotal >= 2 ? `<div class="octe-status-summary"><div><span style="width:${positiveCount / statusTotal * 100}%"></span><i style="width:${negativeCount / statusTotal * 100}%"></i></div><p><b>${positiveCount}</b> dispositifs actifs <b>${negativeCount}</b> statuts négatifs</p></div>` : ''}${statuses.length ? `<div class="octe-status-matrix">${statuses.map(item => `<div class="${/^(oui|approuvé|signée)/i.test(item.value) ? 'is-positive' : 'is-negative'}"><span>${escapeHtml(item.label)}</span><b>${escapeHtml(item.value)}</b></div>`).join('')}</div>` : ''}${thematicViz}<div class="octe-data-grid">${available.map(entry => {
@@ -461,7 +487,7 @@
       ['Population et dynamiques sociales', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
       ['Habitat et logement', ['Habitat logements'], ['Logement']],
       ['Occupation du sol et espaces naturels', ['Occupation du sol communal', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
-      ['Économie et emploi', ['Développement économique'], []],
+      ['Économie et emploi', ['Développement économique'], ['Économie locale']],
       ['Planification et projets territoriaux', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
       ['Mobilités et déplacements', ['Transports / déplacements et Aménagement'], ['Offre de mobilité']],
       ['Eau et transition énergétique', ['Gestion de l’eau', 'Transition énergétique'], ['Artificialisation, eau et énergie']],
