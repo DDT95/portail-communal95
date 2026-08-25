@@ -238,27 +238,18 @@
     const portal = portalSections();
     const portalByTheme = new Map(portal.map(s => [s.dataset.sectionTitle || '', s.outerHTML]));
     const cleanOcteLine = line => line.replace(/_{2,}/g, ' ').replace(/\.{4,}/g, '  ·  ').replace(/\s{3,}/g, '  ·  ').replace(/\s+([,;:])/g, '$1').trim();
-    const groups = [
-      ['Cadre territorial, démographie et planification', ['Données générales', 'Occupation du sol communal', 'Indicateurs socio-démographiques', 'Déclinaison du SDRIF-E']],
-      ['Économie, foncier et habitat', ['Développement économique', 'Espaces Naturels Agricoles et forestiers', 'Habitat logements']],
-      ['Mobilités, eau, énergie et démarches territoriales', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique', 'Démarches territoriales']],
-      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores']]
+    const officialHtml = names => names.map(name => themes.find(t => t.title === name)).filter(Boolean).map(t => `<section class="octe-theme"><h2>${escapeHtml(t.title)}</h2><div class="octe-badge">DONNÉES OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`).join('');
+    const enrichedHtml = names => names.map(name => portalByTheme.get(name)).filter(Boolean).join('');
+    const integratedGroups = [
+      ['Repères territoriaux et gouvernance', ['Données générales'], ['Chiffres clés', 'Élus et gouvernance']],
+      ['Population, revenus et emploi', ['Indicateurs socio-démographiques'], ['Démographie, revenus et emploi']],
+      ['Habitat et statuts d’occupation', ['Habitat logements'], ['Logement']],
+      ['Foncier, économie et occupation du sol', ['Occupation du sol communal', 'Développement économique', 'Espaces Naturels Agricoles et forestiers'], ['Occupation du sol (MOS 2025)']],
+      ['Planification et démarches territoriales', ['Déclinaison du SDRIF-E', 'Démarches territoriales'], ['Politique de la ville']],
+      ['Mobilités, services, eau et énergie', ['Transports / déplacements et Aménagement', 'Gestion de l’eau', 'Transition énergétique'], ['Sécurité', 'Artificialisation, eau et énergie']],
+      ['Patrimoine, environnement et risques', ['Patrimoine écologique, paysager et bâtis protégés', 'Risques naturels et technologiques / Nuisances sonores'], ['Risques majeurs recensés']]
     ];
-    const contents = groups.map(([pageTitle, octeNames]) => {
-      const official = octeNames.map(name => themes.find(t => t.title === name)).filter(Boolean);
-      return {
-        title: pageTitle,
-        html: `${warning}${official.map(t => `<section class="octe-theme"><h2>${escapeHtml(t.title)}</h2><div class="octe-badge">SOURCE OFFICIELLE OCTE · DDT 95</div><div class="octe-lines">${t.lines.map(l => `<p>${escapeHtml(cleanOcteLine(l))}</p>`).join('')}</div></section>`).join('')}`
-      };
-    }).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
-    const enrichedPages = [
-      ['Gouvernance et services de sécurité', ['Chiffres clés', 'Élus et gouvernance', 'Sécurité']],
-      ['Portrait démographique, social et économique', ['Démographie, revenus et emploi']],
-      ['Habitat et statuts d’occupation', ['Logement']],
-      ['Occupation du sol et trajectoire foncière', ['Occupation du sol (MOS 2025)']],
-      ['Risques, eau, énergie et politique de la ville', ['Risques majeurs recensés', 'Artificialisation, eau et énergie', 'Politique de la ville']]
-    ].map(([title, names]) => ({ title, html: names.map(name => portalByTheme.get(name)).filter(Boolean).join('') })).filter(page => page.html);
-    const pages = [...contents, ...enrichedPages];
+    const pages = integratedGroups.map(([title, octeNames, enrichedNames]) => ({ title, html: `${warning}${officialHtml(octeNames)}${enrichedHtml(enrichedNames)}` })).filter(page => page.html.replace(/<[^>]+>/g, '').trim());
     document.getElementById('dataPages').innerHTML = pages.map((p, i) => pageHtml(p.title, p.html, i, pages.length)).join('');
   }
 

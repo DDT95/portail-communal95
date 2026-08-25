@@ -56,9 +56,13 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .data-body .viz-land{--theme:#26875a;--theme-soft:#edf8f1}
 .data-body .viz-risks{--theme:#c43d4f;--theme-soft:#fff0f2}
 .data-body .viz-resources{--theme:#087e8b;--theme-soft:#eaf8f9}
+.data-body .viz-resources{padding:4mm 5mm}
 .data-body .viz-city{--theme:#c16914;--theme-soft:#fff5e8}
 .data-body .viz-governance{--theme:#3158a5;--theme-soft:#edf2fc}
 .data-body .viz-security{--theme:#5f6577;--theme-soft:#f2f3f6}
+.data-body .viz-security{padding:3mm 4mm}
+.data-body .viz-security .data-grid>div{padding:1mm 0;font-size:8pt}
+.data-body .viz-security .source-note{margin-top:1.5mm}
 .data-body .viz-section h3{color:var(--theme)}
 .data-body .data-grid>div{display:flex;justify-content:space-between;gap:6mm;padding:2mm 0;border-top:.2mm solid #eee;font-size:9pt}
 .data-body .data-grid dt{color:#777;margin:0}
