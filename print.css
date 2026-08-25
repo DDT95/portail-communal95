@@ -240,6 +240,77 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .summary-grid .age-structure{margin:.5mm 0 1mm}.summary-grid .age-stack{height:4mm}.summary-grid .age-labels{gap:.6mm;margin-top:.7mm}.summary-grid .age-labels>div{grid-template-columns:1.4mm 1fr auto;gap:.6mm;font-size:5pt}.summary-grid .age-labels i{width:1.4mm;height:1.4mm}
 .summary-source{font-size:6pt;color:#666;margin:2.5mm 0 0}
 
+/* Système éditorial 2026 : grille, hiérarchie et rythme communs */
+.data-page{--s1:2mm;--s2:4mm;--s3:6mm;--s4:8mm;padding:10mm 13mm}
+.data-body{display:flex;flex-direction:column;gap:var(--s3)}
+.data-body .result-section,.octe-theme{margin:0;padding:var(--s3);border-radius:2mm;background:#fff;box-shadow:none}
+.data-body .viz-section{background:#fff}
+.data-body .result-section h3,.octe-theme h2{font-size:14pt;line-height:1.18;margin:0 0 var(--s2);font-weight:700}
+.data-body .source-note{font-size:7pt;line-height:1.35;margin-top:var(--s2)}
+
+/* Première page : carte 16:9, centrée, puis repères dans une vraie grille */
+.data-body .viz-key{grid-template-columns:78mm minmax(0,1fr);grid-template-rows:auto 50mm;gap:var(--s2) var(--s3);align-items:stretch;overflow:hidden}
+.commune-map-card{padding:0;background:#e4e6e9;border:.25mm solid #b9bec7;border-radius:2mm}
+.commune-mini-map{height:100%;min-height:0;border:0;border-radius:1.7mm;background:#dedfe2}
+.commune-mini-map .leaflet-container{background:#dedfe2}
+.data-body .viz-key .data-grid{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:var(--s2);min-height:0}
+.data-body .viz-key .data-grid>div{display:flex;flex-direction:column;justify-content:center;padding:var(--s2);border:0;border-left:1mm solid #000091;border-radius:0;background:#f4f5fb}
+.data-body .viz-key .data-grid dt{font-size:8pt;line-height:1.2;color:#52566a}
+.data-body .viz-key .data-grid dd{font-size:11pt;line-height:1.18;margin-top:1.5mm;color:#000091}
+
+/* Démographie : trois niveaux de lecture, sans doublons */
+.demography-kpis{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:var(--s2);margin-bottom:var(--s3)}
+.demography-kpis>div{min-height:25mm;padding:var(--s2);display:flex;flex-direction:column;justify-content:space-between;border-top:1.1mm solid #e05a3f;background:#fff7f4}
+.demography-kpis span{font-size:8pt;line-height:1.25;color:#6d514b}
+.demography-kpis b{font-size:15pt;line-height:1.1;color:#9c321f}
+.demography-kpis .is-primary b{font-size:20pt}
+.demography-chart{padding:var(--s2) 0;border-top:.25mm solid #e3d6d2}
+.demography-chart h4{margin:0 0 3mm;font-size:9pt;letter-spacing:.04em;text-transform:uppercase;color:#913421}
+.age-structure{margin:0}.age-stack{height:9mm}.age-labels{margin-top:3mm;gap:4mm}.age-labels>div{font-size:8pt;grid-template-columns:2.3mm 1fr auto;gap:1.5mm}
+.family-chart{display:grid;grid-template-columns:1fr 1fr;gap:3mm 6mm}
+.family-chart h4{grid-column:1/-1}
+.family-bar{display:grid;grid-template-columns:1fr auto;gap:1.2mm 3mm;align-items:end}
+.family-bar span{font-size:7.7pt;color:#4c5558;line-height:1.2}
+.family-bar b{font-size:8pt;color:#0d5c63;white-space:nowrap}
+.family-bar i{grid-column:1/-1;display:block;height:2.4mm;background:#e2eff0;border-radius:2mm;overflow:hidden}
+.family-bar em{display:block;height:100%;border-radius:2mm}
+
+/* Économie : indicateurs majeurs, taux comparables et intensité locale */
+.economy-viz{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"head bars" "context context";gap:var(--s3)}
+.economy-headlines{grid-area:head;display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+.economy-headlines>div{min-height:42mm;padding:var(--s2);display:flex;flex-direction:column;justify-content:space-between;border-top:1.2mm solid #b25b12;background:#fff7ed}
+.economy-headlines span{font-size:7pt;text-transform:uppercase;letter-spacing:.07em;color:#8d4a12}
+.economy-headlines b{margin:2mm 0;font-size:22pt;line-height:1;color:#7a3b08}
+.economy-headlines small{font-size:8pt;line-height:1.25;color:#66584c}
+.economy-bars{grid-area:bars;display:flex;flex-direction:column;justify-content:center;gap:5mm;padding:var(--s2);background:#fffaf4}
+.economy-bars>div{display:grid;grid-template-columns:1fr auto;gap:1.5mm 4mm;align-items:end}
+.economy-bars span{font-size:8pt;line-height:1.25;color:#66584c}.economy-bars b{font-size:12pt;color:#7a3b08}
+.economy-bars i{grid-column:1/-1;height:3mm;background:#eadfd4;border-radius:2mm;overflow:hidden}.economy-bars em{display:block;height:100%;background:#cf741f;border-radius:2mm}
+.economy-context{grid-area:context;display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.economy-context>div{min-height:22mm;padding:var(--s2);justify-content:space-between;border:0;border-left:1mm solid #d59250;background:#fff}
+.economy-context span{font-size:8pt}.economy-context b{font-size:12pt}
+
+/* Synthèse : densité maîtrisée, carte lisible et titres toujours dominants */
+.summary-page{padding:8mm 10mm}
+.summary-page .data-page-head{margin-bottom:3mm}
+.summary-grid{gap:3mm;grid-template-columns:1fr 1fr}
+.summary-grid .result-section{padding:3mm 3.5mm}
+.summary-grid .result-section h3{font-size:9.5pt;line-height:1.2;margin-bottom:2mm}
+.summary-grid .viz-key{grid-template-columns:1fr;grid-template-rows:auto 29mm auto;gap:2mm;align-content:start;overflow:visible}
+.summary-grid .viz-key>h3{grid-column:1;grid-row:1}.summary-grid .viz-key>.commune-map-card{grid-column:1;grid-row:2}.summary-grid .viz-key>.data-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;gap:1.2mm}
+.summary-grid .commune-mini-map{height:29mm;min-height:29mm}
+.summary-grid .viz-key .data-grid>div{padding:1.4mm;border-left:.6mm solid #000091}.summary-grid .viz-key .data-grid dt{font-size:4.8pt}.summary-grid .viz-key .data-grid dd{font-size:6.8pt;line-height:1.15;overflow-wrap:normal;white-space:normal}
+.summary-grid .demography-kpis{grid-template-columns:repeat(3,1fr);gap:1.5mm;margin-bottom:2mm}
+.summary-grid .demography-kpis>div{min-height:15mm;padding:1.8mm}
+.summary-grid .demography-kpis span{font-size:5.3pt}.summary-grid .demography-kpis b{font-size:7.3pt}.summary-grid .demography-kpis .is-primary b{font-size:9pt}
+.summary-grid .demography-chart{padding:1.5mm 0}.summary-grid .demography-chart h4{font-size:5.8pt;margin-bottom:1mm}
+.summary-grid .age-labels{margin-top:1mm}.summary-grid .family-chart{display:none}
+.summary-grid .land-overview{grid-template-columns:29mm 1fr;gap:3mm}.summary-grid .land-legend{grid-template-columns:1fr;gap:1.2mm;margin-top:1.8mm}.summary-grid .land-legend small{display:none}.summary-grid .land-legend span{font-size:5.6pt}.summary-grid .land-legend b{font-size:5.8pt}
+
+/* Pas de règles par numéro de page : chaque thème garde le même rythme */
+#dataPage-1 .result-section,#dataPage-2 .result-section,#dataPage-3 .octe-theme,#dataPage-3 .result-section,#dataPage-4 .octe-theme,#dataPage-4 .result-section,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-8 .result-section,#dataPage-9 .octe-theme,#dataPage-9 .result-section{margin-bottom:0}
+#dataPage-1 .viz-demography,#dataPage-2 .viz-housing,#dataPage-3 .octe-theme,#dataPage-3 .viz-land,#dataPage-4 .viz-economy,#dataPage-8 .octe-theme,#dataPage-4 .octe-theme,#dataPage-6 .octe-theme,#dataPage-6 .result-section,#dataPage-8 .octe-theme,#dataPage-9 .octe-theme,#dataPage-9 .result-section{padding:var(--s3)}
+
 @media print{
   @page{size:A3 landscape;margin:0}
   html,body{background:#fff}

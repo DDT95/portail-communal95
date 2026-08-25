@@ -158,7 +158,7 @@
       row.style.setProperty('--row-index', index);
       const value = row.querySelector('dd')?.textContent || '';
       const match = value.match(/(\d+(?:[.,]\d+)?)\s*%/);
-      if (match && !row.querySelector('.value-meter')) {
+      if (match && !row.querySelector('.value-meter') && !['Démographie, revenus et emploi', 'Économie locale'].includes(title)) {
         const pct = Math.max(0, Math.min(100, Number(match[1].replace(',', '.'))));
         row.insertAdjacentHTML('beforeend', `<i class="value-meter" aria-hidden="true"><span style="width:${pct}%"></span></i>`);
       }
@@ -180,6 +180,10 @@
       }
     }
     if (title === 'Démographie, revenus et emploi') {
+      const metricRows = [...section.querySelectorAll('.data-grid>div')].map(row => ({
+        label: row.querySelector('dt')?.textContent.trim() || '',
+        value: row.querySelector('dd')?.textContent.trim() || ''
+      }));
       const ageChart = section.querySelector('.donut-wrap');
       if (ageChart) {
         const ages = [...ageChart.querySelectorAll('.donut-legend-row')].map(row => ({
@@ -187,8 +191,22 @@
           pct: Number((row.querySelector('b')?.textContent || '').replace('%', '').replace(',', '.')) || 0,
           color: row.querySelector('i')?.style.background || '#d0702f'
         }));
-        ageChart.outerHTML = `<div class="age-structure"><div class="age-stack">${ages.map(age => `<i style="width:${age.pct}%;background:${age.color}"></i>`).join('')}</div><div class="age-labels">${ages.map(age => `<div><i style="background:${age.color}"></i><span>${escapeHtml(age.label)}</span><b>${age.pct.toFixed(1)} %</b></div>`).join('')}</div></div>`;
+        ageChart.outerHTML = `<div class="demography-chart"><h4>Structure par âge</h4><div class="age-structure"><div class="age-stack">${ages.map(age => `<i style="width:${age.pct}%;background:${age.color}"></i>`).join('')}</div><div class="age-labels">${ages.map(age => `<div><i style="background:${age.color}"></i><span>${escapeHtml(age.label)}</span><b>${age.pct.toFixed(1)} %</b></div>`).join('')}</div></div></div>`;
       }
+      const familyChart = section.querySelector('.donut-wrap');
+      if (familyChart) {
+        const families = [...familyChart.querySelectorAll('.donut-legend-row')].map(row => ({
+          label: row.querySelector('span')?.textContent.trim() || '',
+          pct: Number((row.querySelector('b')?.textContent || '').replace('%', '').replace(',', '.')) || 0,
+          color: row.querySelector('i')?.style.background || '#16818a'
+        }));
+        familyChart.outerHTML = `<div class="demography-chart family-chart"><h4>Structure des familles</h4>${families.map(item => `<div class="family-bar"><span>${escapeHtml(item.label)}</span><i><em style="width:${item.pct}%;background:${item.color}"></em></i><b>${item.pct.toFixed(1)} %</b></div>`).join('')}</div>`;
+      }
+      section.querySelectorAll('.fiche-subhead').forEach(node => node.remove());
+      section.querySelector('.data-grid')?.remove();
+      const priority = metricRows.filter(row => /Population|Niveau de vie|pauvret/i.test(row.label)).slice(0, 3);
+      const secondary = metricRows.filter(row => !priority.includes(row) && !/Moins de 20|65 ans/i.test(row.label)).slice(0, 2);
+      section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="demography-kpis">${priority.map((row, index) => `<div class="${index === 0 ? 'is-primary' : ''}"><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}${secondary.map(row => `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}</div>`);
     }
     if (title === 'Logement') {
       const occupancy = section.querySelector('.donut-wrap');
@@ -218,7 +236,9 @@
       const headline = rows.filter(row => /Établissements actifs|Emplois salariés$/i.test(row.label)).slice(0, 2);
       const context = rows.filter(row => !headline.includes(row)).slice(0, 5);
       section.querySelector('.data-grid')?.remove();
-      section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="economy-viz"><div class="economy-headlines">${headline.map((row, i) => `<div><i>${i === 0 ? 'ÉTABLISSEMENTS' : 'EMPLOIS'}</i><b>${escapeHtml(row.value)}</b><span>${escapeHtml(row.label)}</span></div>`).join('')}</div><div class="economy-context">${context.map(row => `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}</div></div>`);
+      const percentRows = context.filter(row => /%/.test(row.value));
+      const otherRows = context.filter(row => !percentRows.includes(row));
+      section.querySelector('h3')?.insertAdjacentHTML('afterend', `<div class="economy-viz"><div class="economy-headlines">${headline.map((row, i) => `<div><span>${i === 0 ? 'Tissu économique' : 'Emploi local'}</span><b>${escapeHtml(row.value)}</b><small>${escapeHtml(row.label)}</small></div>`).join('')}</div><div class="economy-bars">${percentRows.map(row => { const pct = Math.max(0, Math.min(100, Number(row.value.match(/\d+(?:[.,]\d+)?/)?.[0].replace(',', '.') || 0))); return `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b><i><em style="width:${pct}%"></em></i></div>`; }).join('')}</div><div class="economy-context">${otherRows.map(row => `<div><span>${escapeHtml(row.label)}</span><b>${escapeHtml(row.value)}</b></div>`).join('')}</div></div>`);
     }
     return section;
   }
@@ -258,10 +278,17 @@
       }});
       const tiles = new GreyTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
       const boundary = L.geoJSON(state.contour, { style: { color: '#000091', weight: 3, opacity: 1, fillColor: '#6f78c8', fillOpacity: .16 } }).addTo(map);
-      const recenter = () => { map.invalidateSize(); const bounds = boundary.getBounds(); const zoom = Math.max(6, map.getBoundsZoom(bounds, false, L.point(54, 54))); map.setView(bounds.getCenter(), zoom, { animate: false }); };
+      const recenter = () => {
+        map.invalidateSize({ animate: false });
+        const compact = Boolean(host.closest('.summary-page'));
+        const padding = compact ? [16, 9] : [28, 22];
+        map.fitBounds(boundary.getBounds(), { paddingTopLeft: padding, paddingBottomRight: padding, maxZoom: 14, animate: false });
+      };
       recenter();
+      const observer = new ResizeObserver(recenter);
+      observer.observe(host);
       let settled = false;
-      const done = () => { if (!settled) { settled = true; setTimeout(() => { recenter(); resolve(); }, 250); } };
+      const done = () => { if (!settled) { settled = true; setTimeout(() => { recenter(); observer.disconnect(); resolve(); }, 350); } };
       tiles.once('load', done);
       setTimeout(done, 1600);
     })));
@@ -272,8 +299,8 @@
     const wanted = ['Chiffres clés', 'Démographie, revenus et emploi', 'Logement', 'Occupation du sol (MOS 2025)', 'Risques majeurs recensés', 'Artificialisation, eau et énergie'];
     const findPercentage = (sectionTitle, label) => {
       const section = sections.find(s => s.dataset.sectionTitle === sectionTitle);
-      const row = section ? [...section.querySelectorAll('.data-grid>div')].find(r => r.querySelector('dt')?.textContent.includes(label)) : null;
-      const match = row?.querySelector('dd')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
+      const row = section ? [...section.querySelectorAll('.data-grid>div,.demography-kpis>div')].find(r => (r.querySelector('dt,span')?.textContent || '').toLocaleLowerCase('fr').includes(label.toLocaleLowerCase('fr'))) : null;
+      const match = row?.querySelector('dd,b')?.textContent.match(/(\d+(?:[.,]\d+)?)\s*%/);
       return match ? Number(match[1].replace(',', '.')) : null;
     };
     const profileValues = [
@@ -290,8 +317,7 @@
       if (s.dataset.sectionTitle === 'Chiffres clés') clone.insertAdjacentHTML('afterbegin', miniMapHtml());
       if (s.dataset.sectionTitle === 'Démographie, revenus et emploi') {
         [...clone.querySelectorAll('.data-grid>div')].slice(3).forEach(row => row.remove());
-        const familyTitle = [...clone.querySelectorAll('.fiche-subhead')].find(n => /ménages/i.test(n.textContent));
-        if (familyTitle) { familyTitle.nextElementSibling?.remove(); familyTitle.remove(); }
+        clone.querySelector('.family-chart')?.remove();
       }
       if (s.dataset.sectionTitle === 'Logement') clone.querySelector('.housing-radials')?.remove();
       return clone.outerHTML;
