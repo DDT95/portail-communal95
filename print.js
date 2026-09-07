@@ -578,11 +578,28 @@
     });
   }
 
+  // html2canvas ne capture par défaut que la zone correspondant à la taille
+  // de la fenêtre (window.innerWidth/innerHeight) : sur une page A3/A4 de
+  // plusieurs centaines de pixels, tout ce qui dépasse la fenêtre du popup
+  // (non maximisée, écran étroit, zoom navigateur…) est silencieusement
+  // tronqué — pas d'erreur, juste une image vide sous le premier écran. On
+  // force donc explicitement le "viewport" de capture à la taille réelle du
+  // document, quelle que soit la taille de la fenêtre du navigateur.
+  function captureElement(el, scale) {
+    window.scrollTo(0, 0);
+    return html2canvas(el, {
+      scale, useCORS: true, backgroundColor: '#ffffff',
+      windowWidth: document.documentElement.scrollWidth,
+      windowHeight: document.documentElement.scrollHeight,
+      scrollX: 0, scrollY: 0
+    });
+  }
+
   async function buildPdf() {
     const { jsPDF } = window.jspdf;
     let doc;
     if (mode === 'carte') {
-      const mapCanvas = await html2canvas(document.getElementById('printPage'), { scale: 2.2, useCORS: true, backgroundColor: '#ffffff' });
+      const mapCanvas = await captureElement(document.getElementById('printPage'), 2.2);
       doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
       doc.addImage(mapCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
     } else {
@@ -593,7 +610,7 @@
       const dataPages = Array.from(document.querySelectorAll('#dataPages .data-page'));
       doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       for (let i = 0; i < dataPages.length; i++) {
-        const canvas = await html2canvas(dataPages[i], { scale: 1.65, useCORS: true, backgroundColor: '#ffffff' });
+        const canvas = await captureElement(dataPages[i], 1.65);
         if (i > 0) doc.addPage('a4', 'portrait');
         doc.addImage(canvas.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
       }
