@@ -46,7 +46,6 @@
     // absent — la carte reste alors centrée sur le Val-d'Oise plutôt que
     // totalement vide.
     map.setView([49.05, 2.1], 11);
-    map.createPane('maskPane'); map.getPane('maskPane').style.zIndex = 420; map.getPane('maskPane').style.pointerEvents = 'none';
     map.createPane('boundaryPane'); map.getPane('boundaryPane').style.zIndex = 430; map.getPane('boundaryPane').style.pointerEvents = 'none';
 
     let tilesOk = 0, tilesFailed = 0;
@@ -111,13 +110,14 @@
 
     let territoryLayer = null;
     if (state.contour) {
-      const g = state.contour;
-      const holes = g.type === 'Polygon' ? [g.coordinates[0]] : (g.coordinates || []).map(p => p[0]);
-      L.geoJSON({
-        type: 'Feature', properties: {},
-        geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...holes] }
-      }, { pane: 'maskPane', interactive: false, style: { stroke: false, fillColor: '#ffffff', fillOpacity: 0.55, fillRule: 'evenodd' } }).addTo(map);
-      territoryLayer = L.geoJSON(state.contour, { pane: 'boundaryPane', interactive: false, style: { color: '#000091', weight: 2, opacity: 0.9, fillOpacity: 0 } }).addTo(map);
+      // Le calque d'assombrissement "hors commune" utilisait un polygone
+      // couvrant le monde entier avec un trou (règle SVG evenodd) : le
+      // renderer Canvas de Leaflet (preferCanvas:true) ne respecte pas
+      // toujours cette règle de remplissage et peut remplir tout le
+      // rectangle au lieu du seul pourtour — masquant alors la totalité du
+      // fond de carte. On se contente donc du contour communal, sans
+      // assombrissement, ce qui est fiable dans tous les cas.
+      territoryLayer = L.geoJSON(state.contour, { pane: 'boundaryPane', interactive: false, style: { color: '#000091', weight: 2.5, opacity: 0.9, fillOpacity: 0 } }).addTo(map);
     }
 
     map.invalidateSize();
