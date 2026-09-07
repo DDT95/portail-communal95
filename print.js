@@ -39,13 +39,16 @@
       zoomControl: false, attributionControl: false, preferCanvas: true,
       dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false
     });
-    // Sans vue initiale, Leaflet ne charge aucune tuile et ne positionne
-    // aucun calque tant qu'aucun setView/fitBounds n'a eu lieu (silencieux,
-    // pas d'erreur) : on force donc toujours une vue par défaut avant
-    // d'ajouter quoi que ce soit, y compris si le contour communal est
-    // absent — la carte reste alors centrée sur le Val-d'Oise plutôt que
-    // totalement vide.
-    map.setView([49.05, 2.1], 11);
+    // La vue finale (fitBounds sur le contour) doit être fixée AVANT
+    // d'ajouter le fond de carte : sinon les tuiles se chargent une première
+    // fois pour une vue par défaut, puis un fitBounds ultérieur en déclenche
+    // de nouvelles pour la vue définitive — et la capture peut intervenir
+    // avant que celles-ci aient fini de charger, laissant une carte blanche
+    // alors même que des tuiles ont bien été chargées (pour la mauvaise vue).
+    map.invalidateSize();
+    const contourBounds = state.contour ? L.geoJSON(state.contour).getBounds() : null;
+    if (contourBounds && contourBounds.isValid()) map.fitBounds(contourBounds, { padding: [24, 24], animate: false });
+    else map.setView([49.05, 2.1], 11, { animate: false });
     map.createPane('boundaryPane'); map.getPane('boundaryPane').style.zIndex = 430; map.getPane('boundaryPane').style.pointerEvents = 'none';
 
     let tilesOk = 0, tilesFailed = 0;
@@ -86,7 +89,7 @@
         return tile;
       }
     });
-    new NeutralTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const tileLayer = new NeutralTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
     vectorDefs.forEach(def => {
       const liveLayer = state.layers?.[def.id];
@@ -120,9 +123,6 @@
       territoryLayer = L.geoJSON(state.contour, { pane: 'boundaryPane', interactive: false, style: { color: '#000091', weight: 2.5, opacity: 0.9, fillOpacity: 0 } }).addTo(map);
     }
 
-    map.invalidateSize();
-    if (territoryLayer) map.fitBounds(territoryLayer.getBounds(), { padding: [24, 24] });
-
     function niceScaleNumber(n) {
       const pow10 = Math.pow(10, String(Math.floor(n)).length - 1);
       const d = n / pow10;
@@ -144,19 +144,30 @@
       document.getElementById('printScale').innerHTML = `<div class="scale-frame" style="width:${fullPx}px"><div class="scale-bar-row">${bars}</div><div class="scale-ticks" style="width:${fullPx}px">${ticks}<span class="scale-unit" style="left:${fullPx}px">${unitLabel}</span></div></div>`;
     }
 
+    // On attend explicitement la fin du chargement des tuiles pour LA vue
+    // définitive (déjà fixée avant l'ajout du fond de carte, plus haut) —
+    // au lieu d'un simple délai fixe qui peut s'écouler avant que le
+    // fond de carte n'ait fini de se dessiner.
+    function whenTilesLoaded(timeoutMs) {
+      return new Promise(resolve => {
+        if (!tileLayer._loading) { resolve(); return; }
+        const timer = setTimeout(resolve, timeoutMs);
+        tileLayer.once('load', () => { clearTimeout(timer); resolve(); });
+      });
+    }
+
     return new Promise(resolve => {
       map.whenReady(() => setTimeout(() => {
         map.invalidateSize();
-        if (territoryLayer) map.fitBounds(territoryLayer.getBounds(), { padding: [24, 24] });
-        renderScaleBar();
-        setTimeout(() => {
+        whenTilesLoaded(3000).then(() => setTimeout(() => {
+          renderScaleBar();
           // Diagnostic imprimé directement sur la fiche (visible sans les
           // outils de dev) : utile tant que la génération reste instable.
           document.getElementById('printSources').insertAdjacentHTML('beforeend',
             `<span class="src-line">Diag : contour ${state.contour ? 'ok' : 'ABSENT'} · couches actives ${vectorDefs.length} · tuiles ok ${tilesOk} / échec ${tilesFailed}</span>`);
           resolve();
-        }, 700);
-      }, 600));
+        }, 300));
+      }, 300));
     });
   }
 
