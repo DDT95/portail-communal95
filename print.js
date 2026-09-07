@@ -161,10 +161,6 @@
         map.invalidateSize();
         whenTilesLoaded(3000).then(() => setTimeout(() => {
           renderScaleBar();
-          // Diagnostic imprimé directement sur la fiche (visible sans les
-          // outils de dev) : utile tant que la génération reste instable.
-          document.getElementById('printSources').insertAdjacentHTML('beforeend',
-            `<span class="src-line">Diag : contour ${state.contour ? 'ok' : 'ABSENT'} · couches actives ${vectorDefs.length} · tuiles ok ${tilesOk} / échec ${tilesFailed}</span>`);
           resolve();
         }, 300));
       }, 300));
