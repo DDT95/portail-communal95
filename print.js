@@ -39,9 +39,17 @@
       zoomControl: false, attributionControl: false, preferCanvas: true,
       dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false
     });
+    // Sans vue initiale, Leaflet ne charge aucune tuile et ne positionne
+    // aucun calque tant qu'aucun setView/fitBounds n'a eu lieu (silencieux,
+    // pas d'erreur) : on force donc toujours une vue par défaut avant
+    // d'ajouter quoi que ce soit, y compris si le contour communal est
+    // absent — la carte reste alors centrée sur le Val-d'Oise plutôt que
+    // totalement vide.
+    map.setView([49.05, 2.1], 11);
     map.createPane('maskPane'); map.getPane('maskPane').style.zIndex = 420; map.getPane('maskPane').style.pointerEvents = 'none';
     map.createPane('boundaryPane'); map.getPane('boundaryPane').style.zIndex = 430; map.getPane('boundaryPane').style.pointerEvents = 'none';
 
+    let tilesOk = 0, tilesFailed = 0;
     const NeutralTileLayer = L.TileLayer.extend({
       createTile(coords, done) {
         const tile = document.createElement('canvas');
@@ -51,21 +59,30 @@
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          ctx.drawImage(img, 0, 0, size.x, size.y);
-          const data = ctx.getImageData(0, 0, size.x, size.y);
-          const d = data.data;
-          for (let i = 0; i < d.length; i += 4) {
-            const r = d[i], g = d[i + 1], b = d[i + 2];
-            const gray1 = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            let r2 = r + (gray1 - r) * 0.85, g2 = g + (gray1 - g) * 0.85, b2 = b + (gray1 - b) * 0.85;
-            const gray2 = 0.2126 * r2 + 0.7152 * g2 + 0.0722 * b2;
-            r2 = gray2 + (r2 - gray2) * 0.35; g2 = gray2 + (g2 - gray2) * 0.35; b2 = gray2 + (b2 - gray2) * 0.35;
-            d[i] = Math.min(255, r2 * 1.06); d[i + 1] = Math.min(255, g2 * 1.06); d[i + 2] = Math.min(255, b2 * 1.06);
+          try {
+            ctx.drawImage(img, 0, 0, size.x, size.y);
+            const data = ctx.getImageData(0, 0, size.x, size.y);
+            const d = data.data;
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              const gray1 = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+              let r2 = r + (gray1 - r) * 0.85, g2 = g + (gray1 - g) * 0.85, b2 = b + (gray1 - b) * 0.85;
+              const gray2 = 0.2126 * r2 + 0.7152 * g2 + 0.0722 * b2;
+              r2 = gray2 + (r2 - gray2) * 0.35; g2 = gray2 + (g2 - gray2) * 0.35; b2 = gray2 + (b2 - gray2) * 0.35;
+              d[i] = Math.min(255, r2 * 1.06); d[i + 1] = Math.min(255, g2 * 1.06); d[i + 2] = Math.min(255, b2 * 1.06);
+            }
+            ctx.putImageData(data, 0, 0);
+            tilesOk++;
+            done(null, tile);
+          } catch (e) {
+            // Tuile chargée mais illisible en pixels (CORS) : on la dessine
+            // quand même telle quelle plutôt que de laisser un carré vide.
+            try { ctx.drawImage(img, 0, 0, size.x, size.y); } catch {}
+            tilesFailed++;
+            done(null, tile);
           }
-          ctx.putImageData(data, 0, 0);
-          done(null, tile);
         };
-        img.onerror = e => done(e, tile);
+        img.onerror = e => { tilesFailed++; done(e, tile); };
         img.src = this.getTileUrl(coords);
         return tile;
       }
@@ -132,7 +149,13 @@
         map.invalidateSize();
         if (territoryLayer) map.fitBounds(territoryLayer.getBounds(), { padding: [24, 24] });
         renderScaleBar();
-        setTimeout(resolve, 700);
+        setTimeout(() => {
+          // Diagnostic imprimé directement sur la fiche (visible sans les
+          // outils de dev) : utile tant que la génération reste instable.
+          document.getElementById('printSources').insertAdjacentHTML('beforeend',
+            `<span class="src-line">Diag : contour ${state.contour ? 'ok' : 'ABSENT'} · couches actives ${vectorDefs.length} · tuiles ok ${tilesOk} / échec ${tilesFailed}</span>`);
+          resolve();
+        }, 700);
       }, 600));
     });
   }
