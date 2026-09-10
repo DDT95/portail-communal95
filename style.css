@@ -154,3 +154,5 @@ body.exporting .drawer{position:static;transform:none;box-shadow:none;width:100%
 .drawer .territory-profile>div span{min-width:0;line-height:1.35;overflow-wrap:anywhere}
 .drawer .territory-profile>div i{grid-column:1/-1;grid-row:2;width:100%}
 .drawer .territory-profile>div b{grid-column:2;grid-row:1;white-space:nowrap;font-size:12px}
+/* Keep the map's percentage height resolvable when the mobile shell switches to auto height. */
+@media(max-width:900px){.workspace,.map-zone{min-height:calc(100vh - 110px)}.map-zone{height:calc(100vh - 110px)}}
